@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:MyApp">
+
+    <Color x:Key="NoteBodyColor">#FFF7D1</Color>
+    <Color x:Key="NoteHeaderColor">#FFF2AB</Color>
+    <Color x:Key="NoteAccentColor">#FFE66E</Color>
+    <Color x:Key="NoteAccentHoverColor">#FFDD3D</Color>
+    <Color x:Key="NoteTextColor">#1F1F1F</Color>
+
+    <SolidColorBrush x:Key="NoteBodyBrush" Color="{StaticResource NoteBodyColor}" />
+    <SolidColorBrush x:Key="NoteHeaderBrush" Color="{StaticResource NoteHeaderColor}" />
+    <SolidColorBrush x:Key="NoteAccentBrush" Color="{StaticResource NoteAccentColor}" />
+    <SolidColorBrush x:Key="NoteAccentHoverBrush" Color="{StaticResource NoteAccentHoverColor}" />
+    <SolidColorBrush x:Key="NoteTextBrush" Color="{StaticResource NoteTextColor}" />
+
+    <SolidColorBrush x:Key="NoteHoverTintBrush" Color="#14000000" />
+    <SolidColorBrush x:Key="NotePressedTintBrush" Color="#24000000" />
+
+    <Color x:Key="NoteMenuBarColor">#FFF4BE</Color>
+    <SolidColorBrush x:Key="NoteMenuBarBrush" Color="{StaticResource NoteMenuBarColor}" />
+
+    <SolidColorBrush x:Key="NoteCheckedBrush" Color="#4D000000" />
+    <SolidColorBrush x:Key="NoteCheckedHoverBrush" Color="#5C000000" />
+    <SolidColorBrush x:Key="NoteCheckedTextBrush" Color="{StaticResource NoteTextColor}" />
+
+    <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="NoteBodyBrush" />
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#1F000000" />
+    <SolidColorBrush x:Key="MenuFlyoutSeparatorBackground" Color="#1F000000" />
+
+    <StaticResource x:Key="MenuFlyoutItemForeground" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutItemForegroundPressed" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+    <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="NotePressedTintBrush" />
+
+    <StaticResource x:Key="MenuFlyoutSubItemForeground" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundPointerOver" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundPressed" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemForegroundSubMenuOpened" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemChevron" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemChevronPointerOver" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemChevronPressed" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemChevronSubMenuOpened" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundPressed" ResourceKey="NotePressedTintBrush" />
+    <StaticResource x:Key="MenuFlyoutSubItemBackgroundSubMenuOpened" ResourceKey="NoteHoverTintBrush" />
+
+    <StaticResource x:Key="ToggleMenuFlyoutItemForeground" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemForegroundPointerOver" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemForegroundPressed" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemCheckGlyphForeground" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemCheckGlyphForegroundPointerOver" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemCheckGlyphForegroundPressed" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+    <StaticResource x:Key="ToggleMenuFlyoutItemBackgroundPressed" ResourceKey="NotePressedTintBrush" />
+
+    <StaticResource x:Key="MenuBarItemForeground" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="MenuBarItemBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+    <StaticResource x:Key="MenuBarItemBackgroundPressed" ResourceKey="NotePressedTintBrush" />
+    <StaticResource x:Key="MenuBarItemBackgroundSelected" ResourceKey="NotePressedTintBrush" />
+
+</ResourceDictionary>
