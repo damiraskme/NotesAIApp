@@ -22,7 +22,6 @@
 
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="ColorPalette.xaml" />
     <None Remove="Python\**\*.py" />
   </ItemGroup>
   <ItemGroup>
@@ -64,11 +63,6 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.6.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Page Update="ColorPalette.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Views\" />

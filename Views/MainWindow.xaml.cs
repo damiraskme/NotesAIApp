@@ -32,6 +32,12 @@ public sealed partial class MainWindow : Window
         Title = ProjectPaths.AppName;
         AppTitleText.Text = ProjectPaths.AppName;
 
+        if (!ThemeService.Apply(ViewModel.Settings.Appearance.Theme, RootGrid))
+        {
+            ThemeService.Apply(ThemeService.DefaultTheme, RootGrid);
+        }
+        BuildThemeMenu();
+
         ExtendsContentIntoTitleBar = true;
 
         var presenter = AppWindow.Presenter as OverlappedPresenter;
@@ -140,6 +146,7 @@ public sealed partial class MainWindow : Window
     {
         if (RootFrame.Content is MainPage mainPage && !await mainPage.ConfirmCloseAllAsync()) return;
 
+        ViewModel.Storage.Flush();
         _closeConfirmed = true;
         Close();
     }
@@ -234,6 +241,29 @@ public sealed partial class MainWindow : Window
 
         ScrollTabsLeftButton.IsEnabled = TabScroller.HorizontalOffset > 0.5;
         ScrollTabsRightButton.IsEnabled = TabScroller.HorizontalOffset < TabScroller.ScrollableWidth - 0.5;
+    }
+
+    private void BuildThemeMenu()
+    {
+        foreach (ThemeInfo theme in ThemeService.Themes)
+        {
+            var item = new RadioMenuFlyoutItem
+            {
+                Text = theme.DisplayName,
+                GroupName = "Theme",
+                IsChecked = theme.Name == ThemeService.CurrentTheme,
+            };
+            item.Click += (s, e) => SelectTheme(theme.Name);
+            ThemeMenu.Items.Add(item);
+        }
+    }
+
+    private void SelectTheme(string name)
+    {
+        if (!ThemeService.Apply(name, RootGrid)) return;
+
+        ViewModel.Settings.Appearance.Theme = name;
+        (RootFrame.Content as MainPage)?.FocusEditor();
     }
 
     private void MenuItem_RefocusEditor(object sender, RoutedEventArgs e)

@@ -21,14 +21,14 @@
             <Setter Property="AllowFocusOnInteraction" Value="False" />
         </Style>
 
-        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#14000000" />
-        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#24000000" />
+        <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+        <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
         <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
         <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
 
         <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="#14000000" />
-        <SolidColorBrush x:Key="ToggleButtonBackgroundPressed" Color="#24000000" />
+        <StaticResource x:Key="ToggleButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+        <StaticResource x:Key="ToggleButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
         <StaticResource x:Key="ToggleButtonBackgroundChecked" ResourceKey="NoteCheckedBrush" />
         <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver" ResourceKey="NoteCheckedHoverBrush" />
         <StaticResource x:Key="ToggleButtonBackgroundCheckedPressed" ResourceKey="NoteCheckedHoverBrush" />
@@ -73,7 +73,9 @@
                 <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
                 <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
                 <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
-                <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{StaticResource NoteTextColor}" />
+                <StaticResource x:Key="TextControlForeground" ResourceKey="NoteTextBrush" />
+                <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="NoteTextBrush" />
+                <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="NoteTextBrush" />
                 <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
             </RichEditBox.Resources>
         </RichEditBox>
@@ -156,14 +158,14 @@
                     CornerRadius="4"
                     BorderThickness="0"
                     Background="{StaticResource NoteAccentBrush}"
-                    Foreground="{StaticResource NoteTextBrush}"
+                    Foreground="{StaticResource NoteAccentTextBrush}"
                     ToolTipService.ToolTip="Run Python backend"
                     Click="PythonButton_Click">
                 <Button.Resources>
-                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{StaticResource NoteAccentHoverColor}" />
-                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{StaticResource NoteAccentHoverColor}" />
-                    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="{StaticResource NoteTextColor}" />
-                    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="{StaticResource NoteTextColor}" />
+                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteAccentHoverBrush" />
+                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NoteAccentHoverBrush" />
+                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="NoteAccentTextBrush" />
+                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="NoteAccentTextBrush" />
                 </Button.Resources>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon x:Name="PythonIcon" Glyph="&#xE945;" FontSize="14" />

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <x:String x:Key="NoteBaseTheme">Dark</x:String>
+
+    <Color x:Key="NoteBodyColor">#000000</Color>
+    <Color x:Key="NoteMenuBarColor">#000000</Color>
+    <Color x:Key="NoteHeaderColor">#000000</Color>
+    <Color x:Key="NoteActiveTabColor">#3D3D3D</Color>
+    <Color x:Key="NoteMenuColor">#000000</Color>
+
+    <Color x:Key="NoteTextColor">#FFFFFF</Color>
+    <Color x:Key="NoteBorderColor">#FFFFFF</Color>
+
+    <Color x:Key="NoteAccentColor">#FFFF00</Color>
+    <Color x:Key="NoteAccentHoverColor">#FFFF80</Color>
+    <Color x:Key="NoteAccentTextColor">#000000</Color>
+
+    <Color x:Key="NoteHoverTintColor">#40FFFFFF</Color>
+    <Color x:Key="NotePressedTintColor">#66FFFFFF</Color>
+
+    <Color x:Key="NoteCheckedColor">#1AEBFF</Color>
+    <Color x:Key="NoteCheckedHoverColor">#80F4FF</Color>
+    <Color x:Key="NoteCheckedTextColor">#000000</Color>
+
+</ResourceDictionary>

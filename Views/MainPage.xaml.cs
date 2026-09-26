@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using MyApp.Messages;
 using MyApp.Models;
+using MyApp.Models.Settings;
 using MyApp.Services;
 using MyApp.ViewModels;
 using Microsoft.Windows.Storage.Pickers;
@@ -37,10 +38,10 @@ public sealed partial class MainPage : Page
             FocusEditor();
         });
 
-        _autoSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _autoSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Editor.AutoSaveDelaySeconds) };
         _autoSaveTimer.Tick += AutoSaveTimer_Tick;
 
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        Editor.PropertyChanged += EditorSettings_PropertyChanged;
         Loaded += MainPage_Loaded;
     }
 
@@ -70,17 +71,21 @@ public sealed partial class MainPage : Page
         DispatcherQueue.TryEnqueue(() => NoteTextBox.Focus(FocusState.Programmatic));
     }
 
-    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(MainViewModel.IsAutoSaveEnabled)) return;
+    private EditorSettings Editor => ViewModel.Settings.Editor;
 
-        if (ViewModel.IsAutoSaveEnabled)
+    private void EditorSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
-            SaveNoteContent();
-        }
-        else
-        {
-            _autoSaveTimer.Stop();
+            case nameof(EditorSettings.AutoSave) when Editor.AutoSave:
+                SaveNoteContent();
+                break;
+            case nameof(EditorSettings.AutoSave):
+                _autoSaveTimer.Stop();
+                break;
+            case nameof(EditorSettings.AutoSaveDelaySeconds):
+                _autoSaveTimer.Interval = TimeSpan.FromSeconds(Editor.AutoSaveDelaySeconds);
+                break;
         }
     }
 
@@ -91,7 +96,7 @@ public sealed partial class MainPage : Page
         UpdateToolbarState();
         UpdateDirtyState();
 
-        if (!ViewModel.IsAutoSaveEnabled || ActiveTab?.IsDirty != true) return;
+        if (!Editor.AutoSave || ActiveTab?.IsDirty != true) return;
 
         _autoSaveTimer.Stop();
         _autoSaveTimer.Start();
@@ -117,7 +122,7 @@ public sealed partial class MainPage : Page
         {
             _autoSaveTimer.Stop();
             UpdateDirtyState();
-            if (ViewModel.IsAutoSaveEnabled && old.FilePath is not null && old.IsDirty)
+            if (Editor.AutoSave && old.FilePath is not null && old.IsDirty)
             {
                 WriteActiveTab();
             }
@@ -363,6 +368,7 @@ public sealed partial class MainPage : Page
             SecondaryButtonText = "Don't save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
+            RequestedTheme = ActualTheme,
         };
 
         UnsavedChoice? allChoice = null;

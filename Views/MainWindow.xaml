@@ -9,10 +9,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Background="{StaticResource NoteBodyBrush}">
+    <Grid x:Name="RootGrid" Background="{StaticResource NoteBodyBrush}">
         <Grid.Resources>
-            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#14000000" />
-            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#24000000" />
+            <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+            <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
         </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="32" />
@@ -52,7 +52,7 @@
                           AllowFocusOnInteraction="False"
                           VerticalAlignment="Center" OffContent="{x:Null}" OnContent="{x:Null}"
                           ToolTipService.ToolTip="Autosave"
-                          IsOn="{x:Bind ViewModel.IsAutoSaveEnabled, Mode=TwoWay}" MinWidth="0">
+                          IsOn="{x:Bind ViewModel.Settings.Editor.AutoSave, Mode=TwoWay}" MinWidth="0">
                 <ToggleSwitch.Resources>
                     <x:Double x:Key="ToggleSwitchPreContentMargin">6</x:Double>
                     <x:Double x:Key="ToggleSwitchPostContentMargin">6</x:Double>
@@ -99,7 +99,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.ColumnSpan="3" CornerRadius="4"
-                                            Background="{StaticResource NoteBodyBrush}"
+                                            Background="{StaticResource NoteActiveTabBrush}"
                                             Visibility="{x:Bind IsActive, Mode=OneWay}"/>
                                     <Border x:Name="HoverBorder" Grid.ColumnSpan="3" CornerRadius="4"
                                             Background="{StaticResource NoteHoverTintBrush}" Opacity="0"/>
@@ -211,7 +211,7 @@
                         <FontIcon Glyph="&#xE713;" />
                     </MenuFlyoutSubItem.Icon>
                     <ToggleMenuFlyoutItem Text="Autosave" Click="MenuItem_RefocusEditor"
-                                          IsChecked="{x:Bind ViewModel.IsAutoSaveEnabled, Mode=TwoWay}" />
+                                          IsChecked="{x:Bind ViewModel.Settings.Editor.AutoSave, Mode=TwoWay}" />
                 </MenuFlyoutSubItem>
             </MenuBarItem>
 
@@ -219,7 +219,11 @@
 
             </MenuBarItem>
             <MenuBarItem Title="View" AllowFocusOnInteraction="False">
-
+                <MenuFlyoutSubItem x:Name="ThemeMenu" Text="Theme">
+                    <MenuFlyoutSubItem.Icon>
+                        <FontIcon Glyph="&#xE790;" />
+                    </MenuFlyoutSubItem.Icon>
+                </MenuFlyoutSubItem>
             </MenuBarItem>
         </MenuBar>
 
