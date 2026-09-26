@@ -9,5 +9,8 @@ namespace MyApp.Models.Settings
 
         [ObservableProperty]
         public partial string? ActiveTab { get; set; }
+
+        [ObservableProperty]
+        public partial List<string> RecentFiles { get; set; } = new();
     }
 }

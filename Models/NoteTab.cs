@@ -21,9 +21,14 @@ namespace MyApp.Models
 
         public string SavedRtf { get; set; } = "";
 
-        public string Title => FilePath is null ? "Untitled" : Path.GetFileNameWithoutExtension(FilePath);
+        public string DefaultExtension { get; init; } = ".rtf";
 
-        public bool IsPlainTextFile =>
-            string.Equals(Path.GetExtension(FilePath), ".txt", StringComparison.OrdinalIgnoreCase);
+        public string Extension => FilePath is null ? DefaultExtension : Path.GetExtension(FilePath).ToLowerInvariant();
+
+        public string Title => FilePath is null
+            ? (DefaultExtension == ".rtf" ? "Untitled" : "Untitled" + DefaultExtension)
+            : Path.GetFileNameWithoutExtension(FilePath);
+
+        public bool IsPlainTextFile => Extension is ".txt" or ".md";
     }
 }

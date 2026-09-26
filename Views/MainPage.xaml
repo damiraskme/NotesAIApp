@@ -44,6 +44,17 @@
         <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="Transparent" />
         <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="Transparent" />
         <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="Transparent" />
+
+        <Style x:Key="FindBarButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
+            <Setter Property="AllowFocusOnInteraction" Value="False" />
+        </Style>
     </Page.Resources>
 
     <Grid Padding="12,4,12,8">
@@ -53,32 +64,85 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <RichEditBox x:Name="NoteTextBox"
-                     Grid.Row="0"
-                     PlaceholderText="Take a note..."
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     BorderThickness="0"
-                     Padding="4"
-                     FontSize="15"
-                     Foreground="{StaticResource NoteTextBrush}"
-                     HorizontalAlignment="Stretch"
-                     VerticalAlignment="Stretch"
-                     TextChanged="NoteBoxControl"
-                     SelectionChanged="NoteTextBox_SelectionChanged">
-            <RichEditBox.Resources>
-                <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
-                <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
-                <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
-                <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
-                <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
-                <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
-                <StaticResource x:Key="TextControlForeground" ResourceKey="NoteTextBrush" />
-                <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="NoteTextBrush" />
-                <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="NoteTextBrush" />
-                <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
-            </RichEditBox.Resources>
-        </RichEditBox>
+        <Grid x:Name="EditorHost" Grid.Row="0" SizeChanged="EditorHost_SizeChanged">
+            <RichEditBox x:Name="NoteTextBox"
+                         PlaceholderText="Take a note..."
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         BorderThickness="0"
+                         Padding="4"
+                         FontSize="15"
+                         Foreground="{StaticResource NoteTextBrush}"
+                         HorizontalAlignment="Left"
+                         VerticalAlignment="Top"
+                         SelectionHighlightColorWhenNotFocused="{ThemeResource TextControlSelectionHighlightColor}"
+                         TextChanged="NoteBoxControl"
+                         SelectionChanged="NoteTextBox_SelectionChanged">
+                <RichEditBox.Resources>
+                    <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+                    <StaticResource x:Key="TextControlForeground" ResourceKey="NoteTextBrush" />
+                    <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="NoteTextBrush" />
+                    <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="NoteTextBrush" />
+                    <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+                </RichEditBox.Resources>
+                <RichEditBox.RenderTransform>
+                    <ScaleTransform x:Name="EditorZoom" ScaleX="1" ScaleY="1" />
+                </RichEditBox.RenderTransform>
+            </RichEditBox>
+
+            <TextBlock x:Name="ZoomIndicator"
+                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,4"
+                       FontSize="11" Opacity="0.6" Visibility="Collapsed"
+                       Foreground="{StaticResource NoteTextBrush}" />
+        </Grid>
+
+        <Border x:Name="FindBar" Grid.Row="0"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Padding="4"
+                CornerRadius="6" BorderThickness="1"
+                Background="{StaticResource NoteMenuBrush}" BorderBrush="{StaticResource NoteBorderBrush}"
+                Visibility="Collapsed" KeyDown="FindBar_KeyDown">
+            <StackPanel Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <ToggleButton x:Name="ReplaceToggle" Style="{StaticResource NoteBoxButtonStyle}"
+                                  Width="28" ToolTipService.ToolTip="Toggle replace"
+                                  Click="ReplaceToggle_Click">
+                        <FontIcon Glyph="&#xE70D;" FontSize="10" />
+                    </ToggleButton>
+                    <TextBox x:Name="FindBox" Width="170" PlaceholderText="Find"
+                             KeyDown="FindBox_KeyDown" TextChanged="FindBox_TextChanged" />
+                    <Button Style="{StaticResource FindBarButtonStyle}" ToolTipService.ToolTip="Find previous (Shift+F3)"
+                            Click="FindPrevious_Click">
+                        <FontIcon Glyph="&#xE70E;" FontSize="12" />
+                    </Button>
+                    <Button Style="{StaticResource FindBarButtonStyle}" ToolTipService.ToolTip="Find next (F3)"
+                            Click="FindNext_Click">
+                        <FontIcon Glyph="&#xE70D;" FontSize="12" />
+                    </Button>
+                    <ToggleButton x:Name="MatchCaseToggle" Style="{StaticResource NoteBoxButtonStyle}"
+                                  Width="32" ToolTipService.ToolTip="Match case">
+                        <TextBlock Text="Aa" FontSize="12" />
+                    </ToggleButton>
+                    <Button Style="{StaticResource FindBarButtonStyle}" ToolTipService.ToolTip="Close (Esc)"
+                            Click="CloseFind_Click">
+                        <FontIcon Glyph="&#xE711;" FontSize="11" />
+                    </Button>
+                </StackPanel>
+                <StackPanel x:Name="ReplaceRow" Orientation="Horizontal" Spacing="2" Margin="30,0,0,0"
+                            Visibility="Collapsed">
+                    <TextBox x:Name="ReplaceBox" Width="170" PlaceholderText="Replace"
+                             KeyDown="ReplaceBox_KeyDown" />
+                    <Button Style="{StaticResource FindBarButtonStyle}" Content="Replace" Click="Replace_Click" />
+                    <Button Style="{StaticResource FindBarButtonStyle}" Content="Replace all" Click="ReplaceAll_Click" />
+                </StackPanel>
+                <TextBlock x:Name="FindStatus" Margin="32,0,0,2" FontSize="11" Opacity="0.7"
+                           Foreground="{StaticResource NoteTextBrush}" Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
 
         <InfoBar x:Name="PythonInfoBar"
                  Grid.Row="1"

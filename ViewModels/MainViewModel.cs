@@ -21,6 +21,14 @@ namespace MyApp.ViewModels
         [ObservableProperty]
         public partial bool IsPythonBusy { get; set; } = false;
 
+        [ObservableProperty]
+        public partial bool HasSelection { get; set; }
+
+        [ObservableProperty]
+        public partial bool CanUndo { get; set; }
+
+        private const int MaxRecentFiles = 10;
+
         public string DefaultFilePath { get; }
 
         public ObservableCollection<NoteTab> Tabs { get; } = new();
@@ -78,9 +86,40 @@ namespace MyApp.ViewModels
 
         public void SaveSession()
         {
+            if (LaunchOptions.IsNewWindow) return;
+
             SessionState session = Storage.State.Session;
             session.OpenTabs = Tabs.Where(t => t.FilePath is not null).Select(t => t.FilePath!).ToList();
             session.ActiveTab = ActiveTab?.FilePath;
+        }
+
+        public void AddRecentFile(string path)
+        {
+            if (LaunchOptions.IsNewWindow) return;
+
+            SessionState session = Storage.State.Session;
+            session.RecentFiles = session.RecentFiles
+                .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
+                .Prepend(path)
+                .Take(MaxRecentFiles)
+                .ToList();
+        }
+
+        public void RemoveRecentFile(string path)
+        {
+            if (LaunchOptions.IsNewWindow) return;
+
+            SessionState session = Storage.State.Session;
+            session.RecentFiles = session.RecentFiles
+                .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        public void ClearRecentFiles()
+        {
+            if (LaunchOptions.IsNewWindow) return;
+
+            Storage.State.Session.RecentFiles = new List<string>();
         }
 
         [RelayCommand]

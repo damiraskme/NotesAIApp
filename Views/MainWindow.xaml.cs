@@ -7,6 +7,10 @@ using MyApp.Models;
 using MyApp.Services;
 using MyApp.ViewModels;
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using Windows.System;
+using Windows.UI.Core;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
 using WinRT.Interop;
@@ -37,6 +41,9 @@ public sealed partial class MainWindow : Window
             ThemeService.Apply(ThemeService.DefaultTheme, RootGrid);
         }
         BuildThemeMenu();
+        BuildRecentMenu();
+        ViewModel.Storage.State.Session.PropertyChanged += Session_PropertyChanged;
+        RootGrid.PreviewKeyDown += RootGrid_PreviewKeyDown;
 
         ExtendsContentIntoTitleBar = true;
 
@@ -279,6 +286,156 @@ public sealed partial class MainWindow : Window
         int delta = e.GetCurrentPoint(TabScroller).Properties.MouseWheelDelta;
         TabScroller.ChangeView(TabScroller.HorizontalOffset - delta, null, null, true);
         e.Handled = true;
+    }
+
+    private MainPage? Page => RootFrame.Content as MainPage;
+
+    private void NewTab_Click(object sender, RoutedEventArgs e) => Page?.NewTab();
+
+    private void NewMarkdownTab_Click(object sender, RoutedEventArgs e) => Page?.NewTab(".md");
+
+    private void NewWindow_Click(object sender, RoutedEventArgs e) => OpenNewWindow();
+
+    private async void Save_Click(object sender, RoutedEventArgs e) => await SaveActiveAsync();
+
+    private async void SaveAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (Page is MainPage page) await page.SaveAllAsync();
+    }
+
+    private async void CloseTab_MenuClick(object sender, RoutedEventArgs e)
+    {
+        if (Page is MainPage page) await page.CloseActiveTabAsync();
+    }
+
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => RequestClose();
+
+    private void Undo_Click(object sender, RoutedEventArgs e) => Page?.Undo();
+
+    private void Cut_Click(object sender, RoutedEventArgs e) => Page?.Cut();
+
+    private void Copy_Click(object sender, RoutedEventArgs e) => Page?.Copy();
+
+    private void Paste_Click(object sender, RoutedEventArgs e) => Page?.Paste();
+
+    private void Delete_Click(object sender, RoutedEventArgs e) => Page?.Delete();
+
+    private void ClearFormatting_Click(object sender, RoutedEventArgs e) => Page?.ClearFormatting();
+
+    private async void Define_Click(object sender, RoutedEventArgs e)
+    {
+        if (Page is MainPage page) await page.DefineWithBingAsync();
+    }
+
+    private void Find_Click(object sender, RoutedEventArgs e) => Page?.ShowFind(replace: false);
+
+    private void FindNext_Click(object sender, RoutedEventArgs e) => Page?.FindNext();
+
+    private void FindPrevious_Click(object sender, RoutedEventArgs e) => Page?.FindPrevious();
+
+    private void Replace_Click(object sender, RoutedEventArgs e) => Page?.ShowFind(replace: true);
+
+    private async void GoTo_Click(object sender, RoutedEventArgs e)
+    {
+        if (Page is MainPage page) await page.GoToLineAsync();
+    }
+
+    private void SelectAll_Click(object sender, RoutedEventArgs e) => Page?.SelectAll();
+
+    private void ZoomIn_Click(object sender, RoutedEventArgs e) => Page?.ZoomIn();
+
+    private void ZoomOut_Click(object sender, RoutedEventArgs e) => Page?.ZoomOut();
+
+    private void ResetZoom_Click(object sender, RoutedEventArgs e) => Page?.ResetZoom();
+
+    private async Task SaveActiveAsync()
+    {
+        if (Page is not MainPage page) return;
+        await page.SaveAsync();
+        page.FocusEditor();
+    }
+
+    private static void OpenNewWindow()
+    {
+        if (Environment.ProcessPath is not string exe) return;
+        Process.Start(new ProcessStartInfo(exe, LaunchOptions.NewWindowArgument) { UseShellExecute = false });
+    }
+
+    private void Session_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Models.Settings.SessionState.RecentFiles)) BuildRecentMenu();
+    }
+
+    private void BuildRecentMenu()
+    {
+        RecentMenu.Items.Clear();
+        List<string> recent = ViewModel.Storage.State.Session.RecentFiles;
+
+        if (recent.Count == 0 || LaunchOptions.IsNewWindow)
+        {
+            RecentMenu.Items.Add(new MenuFlyoutItem { Text = "No recent files", IsEnabled = false });
+            return;
+        }
+
+        foreach (string path in recent)
+        {
+            var item = new MenuFlyoutItem { Text = Path.GetFileName(path) };
+            ToolTipService.SetToolTip(item, path);
+            item.Click += async (s, e) =>
+            {
+                if (Page is MainPage page) await page.OpenPathAsync(path);
+            };
+            RecentMenu.Items.Add(item);
+        }
+
+        RecentMenu.Items.Add(new MenuFlyoutSeparator());
+        var clear = new MenuFlyoutItem { Text = "Clear recent files" };
+        clear.Click += (s, e) =>
+        {
+            ViewModel.ClearRecentFiles();
+            Page?.FocusEditor();
+        };
+        RecentMenu.Items.Add(clear);
+    }
+
+    private static bool IsDown(VirtualKey key) =>
+        InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(CoreVirtualKeyStates.Down);
+
+    private async void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (Page is not MainPage page) return;
+
+        bool ctrl = IsDown(VirtualKey.Control);
+        bool shift = IsDown(VirtualKey.Shift);
+        bool alt = IsDown(VirtualKey.Menu);
+        VirtualKey key = e.Key;
+
+        Func<Task>? action = (ctrl, shift, alt, key) switch
+        {
+            (true, false, false, VirtualKey.N) => () => { page.NewTab(); return Task.CompletedTask; },
+            (true, true, false, VirtualKey.N) => () => { OpenNewWindow(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.O) => page.OpenFileAsync,
+            (true, false, false, VirtualKey.S) => SaveActiveAsync,
+            (true, true, false, VirtualKey.S) => page.SaveAsAsync,
+            (true, false, true, VirtualKey.S) => page.SaveAllAsync,
+            (true, false, false, VirtualKey.W) => page.CloseActiveTabAsync,
+            (true, true, false, VirtualKey.W) => () => { RequestClose(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.E) => page.DefineWithBingAsync,
+            (true, false, false, VirtualKey.F) => () => { page.ShowFind(replace: false); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.H) => () => { page.ShowFind(replace: true); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.G) => page.GoToLineAsync,
+            (false, false, false, VirtualKey.F3) => () => { page.FindNext(); return Task.CompletedTask; },
+            (false, true, false, VirtualKey.F3) => () => { page.FindPrevious(); return Task.CompletedTask; },
+            (true, _, false, VirtualKey.Add or (VirtualKey)187) => () => { page.ZoomIn(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.Subtract or (VirtualKey)189) => () => { page.ZoomOut(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.Number0 or VirtualKey.NumberPad0) => () => { page.ResetZoom(); return Task.CompletedTask; },
+            (false, false, false, VirtualKey.Escape) when page.IsFindOpen => () => { page.CloseFind(); return Task.CompletedTask; },
+            _ => null,
+        };
+
+        if (action is null) return;
+        e.Handled = true;
+        await action();
     }
 
     private async void SaveAs_Click(object sender, RoutedEventArgs e)
