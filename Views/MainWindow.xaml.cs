@@ -36,13 +36,14 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         Title = ProjectPaths.AppName;
-        AppTitleText.Text = ProjectPaths.AppName;
 
-        if (!ThemeService.Apply(ViewModel.Settings.Appearance.Theme, RootGrid))
+        ThemeService.RegisterRoot(RootGrid);
+        if (!ThemeService.Apply(ViewModel.Settings.Appearance.Theme))
         {
-            ThemeService.Apply(ThemeService.DefaultTheme, RootGrid);
+            ThemeService.Apply(ThemeService.DefaultTheme);
         }
-        BuildThemeMenu();
+
+        BuildThemeSettings();
         BuildRecentMenu();
         BuildNewMenus();
         ViewModel.Storage.State.Session.PropertyChanged += Session_PropertyChanged;
@@ -253,27 +254,44 @@ public sealed partial class MainWindow : Window
         ScrollTabsRightButton.IsEnabled = TabScroller.HorizontalOffset < TabScroller.ScrollableWidth - 0.5;
     }
 
-    private void BuildThemeMenu()
+    private void BuildThemeSettings()
     {
-        foreach (ThemeInfo theme in ThemeService.Themes)
-        {
-            var item = new RadioMenuFlyoutItem
-            {
-                Text = theme.DisplayName,
-                GroupName = "Theme",
-                IsChecked = theme.Name == ThemeService.CurrentTheme,
-            };
-            item.Click += (s, e) => SelectTheme(theme.Name);
-            ThemeMenu.Items.Add(item);
-        }
+        ThemeRadioButtons.ItemsSource = ThemeService.Themes.Select(t => t.DisplayName).ToList();
+        ThemeRadioButtons.SelectedIndex = ThemeService.Themes
+            .Select((t, i) => (t, i))
+            .FirstOrDefault(x => x.t.Name == ThemeService.CurrentTheme).i;
     }
 
-    private void SelectTheme(string name)
+    private void ThemeRadioButtons_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!ThemeService.Apply(name, RootGrid)) return;
+        int index = ThemeRadioButtons.SelectedIndex;
+        if (index < 0 || index >= ThemeService.Themes.Count) return;
 
+        string name = ThemeService.Themes[index].Name;
+        if (name == ThemeService.CurrentTheme || !ThemeService.Apply(name)) return;
         ViewModel.Settings.Appearance.Theme = name;
-        (RootFrame.Content as MainPage)?.FocusEditor();
+    }
+
+    public bool IsSettingsOpen => SettingsOverlay.Visibility == Visibility.Visible;
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsSettingsOpen) CloseSettings();
+        else OpenSettings();
+    }
+
+    private void CloseSettings_Click(object sender, RoutedEventArgs e) => CloseSettings();
+
+    private void OpenSettings()
+    {
+        SettingsOverlay.Visibility = Visibility.Visible;
+        ThemeRadioButtons.Focus(FocusState.Programmatic);
+    }
+
+    private void CloseSettings()
+    {
+        SettingsOverlay.Visibility = Visibility.Collapsed;
+        Page?.FocusEditor();
     }
 
     private void MenuItem_RefocusEditor(object sender, RoutedEventArgs e)
@@ -293,6 +311,8 @@ public sealed partial class MainWindow : Window
 
     private MainPage? Page => RootFrame.Content as MainPage;
 
+    public FormattingToolbar FormattingToolbar => FormattingToolbarControl;
+
     private static readonly (string Text, string Extension, string Shortcut)[] NewTabTypes =
     {
         ("Plain text (.txt)", ".txt", "Ctrl+1"),
@@ -311,6 +331,7 @@ public sealed partial class MainWindow : Window
         }
 
         _newFlyout.Opened += (s, e) => (_newFlyout.Items[0] as Control)?.Focus(FocusState.Keyboard);
+        _newFlyout.Closed += (s, e) => Page?.FocusEditor();
     }
 
     private MenuFlyoutItem CreateNewTabItem(string text, string extension, string shortcut)
@@ -326,11 +347,18 @@ public sealed partial class MainWindow : Window
         if (NewTabTypeForKey(e.Key) is not string extension) return;
 
         e.Handled = true;
+        OpenNewTab(extension);
+    }
+
+    private void OpenNewTab(string extension)
+    {
+        _newFlyout.Hide();
         foreach (Popup popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(Content.XamlRoot))
         {
             popup.IsOpen = false;
         }
         Page?.NewTab(extension);
+        Page?.FocusEditor();
     }
 
     private static string? NewTabTypeForKey(VirtualKey key) => key switch
@@ -461,6 +489,16 @@ public sealed partial class MainWindow : Window
     {
         if (Page is not MainPage page) return;
 
+        if (IsSettingsOpen)
+        {
+            if (e.Key == VirtualKey.Escape)
+            {
+                e.Handled = true;
+                CloseSettings();
+            }
+            return;
+        }
+
         bool ctrl = IsDown(VirtualKey.Control);
         bool shift = IsDown(VirtualKey.Shift);
         bool alt = IsDown(VirtualKey.Menu);
@@ -472,7 +510,10 @@ public sealed partial class MainWindow : Window
         Func<Task>? action = (ctrl, shift, alt, key) switch
         {
             (true, false, false, VirtualKey.N) => () => { ShowNewMenu(); return Task.CompletedTask; },
-            (true, false, false, _) when newTabType is not null => () => { page.NewTab(newTabType); return Task.CompletedTask; },
+            (true, false, false, _) when newTabType is not null => () => { OpenNewTab(newTabType); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.Z) when page.IsMarkdownMode && !inTextBox => () => { page.Undo(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.Y) when page.IsMarkdownMode && !inTextBox => () => { page.Redo(); return Task.CompletedTask; },
+            (true, true, false, VirtualKey.Z) when page.IsMarkdownMode && !inTextBox => () => { page.Redo(); return Task.CompletedTask; },
             (true, false, false, VirtualKey.B) when !inTextBox => () => { page.ToggleBold(); return Task.CompletedTask; },
             (true, false, false, VirtualKey.I) when !inTextBox => () => { page.ToggleItalic(); return Task.CompletedTask; },
             (true, false, false, VirtualKey.U) when !inTextBox => () => { page.ToggleUnderline(); return Task.CompletedTask; },

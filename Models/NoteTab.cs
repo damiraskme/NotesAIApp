@@ -19,7 +19,7 @@ namespace MyApp.Models
         public int SelectionStart { get; set; } = int.MaxValue;
         public int SelectionEnd { get; set; } = int.MaxValue;
 
-        public string SavedRtf { get; set; } = "";
+        public string SavedSnapshot { get; set; } = "";
 
         public string DefaultExtension { get; init; } = ".rtf";
 

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="MyApp.FormattingToolbar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <Style x:Key="MenuBarToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource NoteBoxButtonStyle}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="28" />
+        </Style>
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+        <ToggleButton x:Name="BoldButton" Style="{StaticResource MenuBarToggleStyle}"
+                      ToolTipService.ToolTip="Bold (Ctrl+B)" Click="BoldButton_Click">
+            <FontIcon Glyph="&#xE8DD;" FontSize="13" />
+        </ToggleButton>
+        <ToggleButton x:Name="ItalicButton" Style="{StaticResource MenuBarToggleStyle}"
+                      ToolTipService.ToolTip="Italic (Ctrl+I)" Click="ItalicButton_Click">
+            <FontIcon Glyph="&#xE8DB;" FontSize="13" />
+        </ToggleButton>
+        <ToggleButton x:Name="UnderlineButton" Style="{StaticResource MenuBarToggleStyle}"
+                      ToolTipService.ToolTip="Underline (Ctrl+U)" Click="UnderlineButton_Click">
+            <FontIcon Glyph="&#xE8DC;" FontSize="13" />
+        </ToggleButton>
+        <ToggleButton x:Name="StrikethroughButton" Style="{StaticResource MenuBarToggleStyle}"
+                      ToolTipService.ToolTip="Strikethrough" Click="StrikethroughButton_Click">
+            <FontIcon Glyph="&#xEDE0;" FontSize="13" />
+        </ToggleButton>
+        <ToggleButton x:Name="ListButton" Style="{StaticResource MenuBarToggleStyle}"
+                      ToolTipService.ToolTip="List (right-click for style)" Click="ListButton_Click">
+            <ToggleButton.ContextFlyout>
+                <MenuFlyout>
+                    <RadioMenuFlyoutItem x:Name="BulletListItem" Text="Bullets"
+                                         GroupName="ListStyle" IsChecked="True"
+                                         Click="ListStyleItem_Click">
+                        <RadioMenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE8FD;" />
+                        </RadioMenuFlyoutItem.Icon>
+                    </RadioMenuFlyoutItem>
+                    <RadioMenuFlyoutItem x:Name="NumberedListItem" Text="Numbers (1, 2, 3)"
+                                         GroupName="ListStyle"
+                                         Click="ListStyleItem_Click" />
+                </MenuFlyout>
+            </ToggleButton.ContextFlyout>
+            <Grid>
+                <FontIcon x:Name="BulletListIcon" Glyph="&#xE8FD;" FontSize="13" />
+                <TextBlock x:Name="NumberedListIcon" Text="123" FontSize="10" FontWeight="SemiBold"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Visibility="Collapsed" />
+            </Grid>
+        </ToggleButton>
+    </StackPanel>
+</UserControl>

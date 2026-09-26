@@ -34,6 +34,18 @@ namespace MyApp.ViewModels
         [ObservableProperty]
         public partial bool CanUndo { get; set; }
 
+        [ObservableProperty]
+        public partial string StatusPosition { get; set; } = "Ln 1, Col 1";
+
+        [ObservableProperty]
+        public partial string StatusCounts { get; set; } = "0 words, 0 characters";
+
+        [ObservableProperty]
+        public partial string StatusFileType { get; set; } = "Rich text";
+
+        [ObservableProperty]
+        public partial string StatusZoom { get; set; } = "100%";
+
         private const int MaxRecentFiles = 10;
 
         public string DefaultFilePath { get; }

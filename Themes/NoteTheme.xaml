@@ -13,6 +13,7 @@
     <SolidColorBrush x:Key="NoteActiveTabBrush" Color="{StaticResource NoteActiveTabColor}" />
     <SolidColorBrush x:Key="NoteMenuBrush" Color="{StaticResource NoteMenuColor}" />
     <SolidColorBrush x:Key="NoteTextBrush" Color="{StaticResource NoteTextColor}" />
+    <SolidColorBrush x:Key="NoteMarkupBrush" Color="{StaticResource NoteMarkupColor}" />
     <SolidColorBrush x:Key="NoteBorderBrush" Color="{StaticResource NoteBorderColor}" />
     <SolidColorBrush x:Key="NoteAccentBrush" Color="{StaticResource NoteAccentColor}" />
     <SolidColorBrush x:Key="NoteAccentHoverBrush" Color="{StaticResource NoteAccentHoverColor}" />
@@ -22,6 +23,36 @@
     <SolidColorBrush x:Key="NoteCheckedBrush" Color="{StaticResource NoteCheckedColor}" />
     <SolidColorBrush x:Key="NoteCheckedHoverBrush" Color="{StaticResource NoteCheckedHoverColor}" />
     <SolidColorBrush x:Key="NoteCheckedTextBrush" Color="{StaticResource NoteCheckedTextColor}" />
+
+    <Style x:Key="NoteBoxButtonStyle" TargetType="ToggleButton">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
+        <Setter Property="AllowFocusOnInteraction" Value="False" />
+    </Style>
+
+    <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
+    <StaticResource x:Key="ToggleButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+    <StaticResource x:Key="ToggleButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
+    <StaticResource x:Key="ToggleButtonBackgroundChecked" ResourceKey="NoteCheckedBrush" />
+    <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver" ResourceKey="NoteCheckedHoverBrush" />
+    <StaticResource x:Key="ToggleButtonBackgroundCheckedPressed" ResourceKey="NoteCheckedHoverBrush" />
+    <StaticResource x:Key="ToggleButtonForeground" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleButtonForegroundPointerOver" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleButtonForegroundPressed" ResourceKey="NoteTextBrush" />
+    <StaticResource x:Key="ToggleButtonForegroundChecked" ResourceKey="NoteCheckedTextBrush" />
+    <StaticResource x:Key="ToggleButtonForegroundCheckedPointerOver" ResourceKey="NoteCheckedTextBrush" />
+    <StaticResource x:Key="ToggleButtonForegroundCheckedPressed" ResourceKey="NoteCheckedTextBrush" />
+    <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="Transparent" />
+    <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed" Color="Transparent" />
+    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="Transparent" />
+    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="Transparent" />
+    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="Transparent" />
 
     <StaticResource x:Key="ButtonForeground" ResourceKey="NoteTextBrush" />
     <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="NoteTextBrush" />

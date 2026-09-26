@@ -18,6 +18,7 @@
             <RowDefinition Height="32" />
             <RowDefinition Height="32" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Grid x:Name="DragRegion" Grid.Row="0" Background="{StaticResource NoteHeaderBrush}">
@@ -46,9 +47,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="AppTitleText" Grid.Column="0" VerticalAlignment="Center" Margin="12,0"
-                       Foreground="{StaticResource NoteTextBrush}"/>
-            <ToggleSwitch x:Name="AutoSaveToggleSwitch" Grid.Column="1"
+            <ToggleSwitch x:Name="AutoSaveToggleSwitch" Grid.Column="1" Margin="12,0,0,0"
                           AllowFocusOnInteraction="False"
                           VerticalAlignment="Center" OffContent="{x:Null}" OnContent="{x:Null}"
                           ToolTipService.ToolTip="Autosave"
@@ -170,61 +169,149 @@
         </Grid>
 
         <Border Grid.Row="1" Background="{StaticResource NoteMenuBarBrush}"/>
-        <MenuBar Grid.Row="1" VerticalAlignment="Center">
-            <MenuBarItem x:Name="FileMenu" Title="File" AllowFocusOnInteraction="False">
-                <MenuFlyoutSubItem x:Name="NewMenu" Text="New" />
-                <MenuFlyoutItem Text="New window" Click="NewWindow_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+N" />
-                <MenuFlyoutItem Text="Open" Click="OpenFile_Click" KeyboardAcceleratorTextOverride="Ctrl+O" />
-                <MenuFlyoutSubItem x:Name="RecentMenu" Text="Recent" />
-                <MenuFlyoutItem Text="Save" Click="Save_Click" KeyboardAcceleratorTextOverride="Ctrl+S" />
-                <MenuFlyoutItem Text="Save as" Click="SaveAs_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+S" />
-                <MenuFlyoutItem Text="Save all" Click="SaveAll_Click" KeyboardAcceleratorTextOverride="Ctrl+Alt+S" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutSubItem Text="Settings">
-                    <ToggleMenuFlyoutItem Text="Autosave" Click="MenuItem_RefocusEditor"
-                                          IsChecked="{x:Bind ViewModel.Settings.Editor.AutoSave, Mode=TwoWay}" />
-                </MenuFlyoutSubItem>
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Close tab" Click="CloseTab_MenuClick" KeyboardAcceleratorTextOverride="Ctrl+W" />
-                <MenuFlyoutItem Text="Close window" Click="CloseWindow_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+W" />
-                <MenuFlyoutItem Text="Exit" Click="CloseWindow_Click" />
-            </MenuBarItem>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <MenuBar Grid.Column="0" VerticalAlignment="Center">
+                <MenuBarItem x:Name="FileMenu" Title="File" AllowFocusOnInteraction="False">
+                    <MenuFlyoutSubItem x:Name="NewMenu" Text="New" />
+                    <MenuFlyoutItem Text="New window" Click="NewWindow_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+N" />
+                    <MenuFlyoutItem Text="Open" Click="OpenFile_Click" KeyboardAcceleratorTextOverride="Ctrl+O" />
+                    <MenuFlyoutSubItem x:Name="RecentMenu" Text="Recent" />
+                    <MenuFlyoutItem Text="Save" Click="Save_Click" KeyboardAcceleratorTextOverride="Ctrl+S" />
+                    <MenuFlyoutItem Text="Save as" Click="SaveAs_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+S" />
+                    <MenuFlyoutItem Text="Save all" Click="SaveAll_Click" KeyboardAcceleratorTextOverride="Ctrl+Alt+S" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Close tab" Click="CloseTab_MenuClick" KeyboardAcceleratorTextOverride="Ctrl+W" />
+                    <MenuFlyoutItem Text="Close window" Click="CloseWindow_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+W" />
+                    <MenuFlyoutItem Text="Exit" Click="CloseWindow_Click" />
+                </MenuBarItem>
 
-            <MenuBarItem Title="Edit" AllowFocusOnInteraction="False">
-                <MenuFlyoutItem Text="Undo" Click="Undo_Click" KeyboardAcceleratorTextOverride="Ctrl+Z"
-                                IsEnabled="{x:Bind ViewModel.CanUndo, Mode=OneWay}" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Cut" Click="Cut_Click" KeyboardAcceleratorTextOverride="Ctrl+X"
-                                IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
-                <MenuFlyoutItem Text="Copy" Click="Copy_Click" KeyboardAcceleratorTextOverride="Ctrl+C"
-                                IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
-                <MenuFlyoutItem Text="Paste" Click="Paste_Click" KeyboardAcceleratorTextOverride="Ctrl+V" />
-                <MenuFlyoutItem Text="Delete" Click="Delete_Click" KeyboardAcceleratorTextOverride="Del"
-                                IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Clear formatting" Click="ClearFormatting_Click"
-                                IsEnabled="{x:Bind ViewModel.CanClearFormatting, Mode=OneWay}" />
-                <MenuFlyoutItem Text="Define with Bing" Click="Define_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Find" Click="Find_Click" KeyboardAcceleratorTextOverride="Ctrl+F" />
-                <MenuFlyoutItem Text="Find next" Click="FindNext_Click" KeyboardAcceleratorTextOverride="F3" />
-                <MenuFlyoutItem Text="Find previous" Click="FindPrevious_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
-                <MenuFlyoutItem Text="Replace" Click="Replace_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
-                <MenuFlyoutItem Text="Go to" Click="GoTo_Click" KeyboardAcceleratorTextOverride="Ctrl+G" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Select all" Click="SelectAll_Click" KeyboardAcceleratorTextOverride="Ctrl+A" />
-            </MenuBarItem>
+                <MenuBarItem Title="Edit" AllowFocusOnInteraction="False">
+                    <MenuFlyoutItem Text="Undo" Click="Undo_Click" KeyboardAcceleratorTextOverride="Ctrl+Z"
+                                    IsEnabled="{x:Bind ViewModel.CanUndo, Mode=OneWay}" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Cut" Click="Cut_Click" KeyboardAcceleratorTextOverride="Ctrl+X"
+                                    IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
+                    <MenuFlyoutItem Text="Copy" Click="Copy_Click" KeyboardAcceleratorTextOverride="Ctrl+C"
+                                    IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
+                    <MenuFlyoutItem Text="Paste" Click="Paste_Click" KeyboardAcceleratorTextOverride="Ctrl+V" />
+                    <MenuFlyoutItem Text="Delete" Click="Delete_Click" KeyboardAcceleratorTextOverride="Del"
+                                    IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Clear formatting" Click="ClearFormatting_Click"
+                                    IsEnabled="{x:Bind ViewModel.CanClearFormatting, Mode=OneWay}" />
+                    <MenuFlyoutItem Text="Define with Bing" Click="Define_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Find" Click="Find_Click" KeyboardAcceleratorTextOverride="Ctrl+F" />
+                    <MenuFlyoutItem Text="Find next" Click="FindNext_Click" KeyboardAcceleratorTextOverride="F3" />
+                    <MenuFlyoutItem Text="Find previous" Click="FindPrevious_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
+                    <MenuFlyoutItem Text="Replace" Click="Replace_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
+                    <MenuFlyoutItem Text="Go to" Click="GoTo_Click" KeyboardAcceleratorTextOverride="Ctrl+G" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Select all" Click="SelectAll_Click" KeyboardAcceleratorTextOverride="Ctrl+A" />
+                </MenuBarItem>
 
-            <MenuBarItem Title="View" AllowFocusOnInteraction="False">
-                <MenuFlyoutSubItem Text="Zoom">
-                    <MenuFlyoutItem Text="Zoom in" Click="ZoomIn_Click" KeyboardAcceleratorTextOverride="Ctrl+Plus" />
-                    <MenuFlyoutItem Text="Zoom out" Click="ZoomOut_Click" KeyboardAcceleratorTextOverride="Ctrl+Minus" />
-                    <MenuFlyoutItem Text="Restore default zoom" Click="ResetZoom_Click" KeyboardAcceleratorTextOverride="Ctrl+0" />
-                </MenuFlyoutSubItem>
-                <MenuFlyoutSubItem x:Name="ThemeMenu" Text="Theme" />
-            </MenuBarItem>
-        </MenuBar>
+                <MenuBarItem Title="View" AllowFocusOnInteraction="False">
+                    <MenuFlyoutSubItem Text="Zoom">
+                        <MenuFlyoutItem Text="Zoom in" Click="ZoomIn_Click" KeyboardAcceleratorTextOverride="Ctrl+Plus" />
+                        <MenuFlyoutItem Text="Zoom out" Click="ZoomOut_Click" KeyboardAcceleratorTextOverride="Ctrl+Minus" />
+                        <MenuFlyoutItem Text="Restore default zoom" Click="ResetZoom_Click" KeyboardAcceleratorTextOverride="Ctrl+0" />
+                    </MenuFlyoutSubItem>
+                </MenuBarItem>
+            </MenuBar>
+
+            <local:FormattingToolbar x:Name="FormattingToolbarControl" Grid.Column="1" Margin="0,0,4,0" />
+
+            <Button x:Name="SettingsButton" Grid.Column="2"
+                    Width="40" Height="32" Padding="0"
+                    Background="Transparent" BorderThickness="0" CornerRadius="0"
+                    AllowFocusOnInteraction="False"
+                    ToolTipService.ToolTip="Settings"
+                    Click="SettingsButton_Click">
+                <FontIcon Glyph="&#xE713;" FontSize="15" />
+            </Button>
+        </Grid>
 
         <Frame x:Name="RootFrame" Grid.Row="2" />
+
+        <Border Grid.Row="3" Background="{StaticResource NoteMenuBarBrush}" Padding="12,4">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="24">
+                <StackPanel.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="Opacity" Value="0.8" />
+                        <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
+                    </Style>
+                </StackPanel.Resources>
+                <TextBlock Text="{x:Bind ViewModel.StatusPosition, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind ViewModel.StatusCounts, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind ViewModel.StatusFileType, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind ViewModel.StatusZoom, Mode=OneWay}" />
+            </StackPanel>
+        </Border>
+
+        <Grid x:Name="SettingsOverlay" Grid.Row="2" Grid.RowSpan="2"
+              Background="{StaticResource NoteBodyBrush}" Visibility="Collapsed">
+            <Grid.Resources>
+                <Style x:Key="SettingsCardStyle" TargetType="Border">
+                    <Setter Property="Background" Value="{StaticResource NoteMenuBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource NoteBorderBrush}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="CornerRadius" Value="6" />
+                    <Setter Property="Padding" Value="16,12" />
+                </Style>
+                <Style x:Key="SettingsSectionStyle" TargetType="TextBlock">
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="Margin" Value="0,12,0,0" />
+                    <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
+                </Style>
+            </Grid.Resources>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="24,16,24,24" Spacing="8" MaxWidth="640">
+                    <Grid>
+                        <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{StaticResource NoteTextBrush}" VerticalAlignment="Center" />
+                        <Button HorizontalAlignment="Right" Width="36" Height="36" Padding="0"
+                                Background="Transparent" BorderThickness="0" CornerRadius="4"
+                                ToolTipService.ToolTip="Close (Esc)"
+                                Click="CloseSettings_Click">
+                            <FontIcon Glyph="&#xE711;" FontSize="13" />
+                        </Button>
+                    </Grid>
+
+                    <TextBlock Text="Editor" Style="{StaticResource SettingsSectionStyle}" />
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Autosave" Foreground="{StaticResource NoteTextBrush}" />
+                                <TextBlock Text="Save the note a moment after you stop typing"
+                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                           Foreground="{StaticResource NoteTextBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" MinWidth="0" OnContent="{x:Null}" OffContent="{x:Null}"
+                                          IsOn="{x:Bind ViewModel.Settings.Editor.AutoSave, Mode=TwoWay}" />
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Text="Appearance" Style="{StaticResource SettingsSectionStyle}" />
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Theme" Foreground="{StaticResource NoteTextBrush}" />
+                            <RadioButtons x:Name="ThemeRadioButtons"
+                                          Foreground="{StaticResource NoteTextBrush}"
+                                          SelectionChanged="ThemeRadioButtons_SelectionChanged" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </Grid>
 </Window>

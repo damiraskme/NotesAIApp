@@ -24,7 +24,16 @@ public static class ThemeService
 
     public static string CurrentTheme { get; private set; } = DefaultTheme;
 
-    public static bool Apply(string name, FrameworkElement root)
+    private static ElementTheme _elementTheme = ElementTheme.Light;
+    private static readonly List<WeakReference<FrameworkElement>> Roots = new();
+
+    public static void RegisterRoot(FrameworkElement root)
+    {
+        Roots.Add(new WeakReference<FrameworkElement>(root));
+        root.RequestedTheme = _elementTheme;
+    }
+
+    public static bool Apply(string name)
     {
         if (!Themes.Any(t => t.Name == name)) return false;
 
@@ -50,9 +59,13 @@ public static class ThemeService
             }
         }
 
-        root.RequestedTheme = palette.TryGetValue("NoteBaseTheme", out object baseTheme) && baseTheme as string == "Dark"
+        _elementTheme = palette.TryGetValue("NoteBaseTheme", out object baseTheme) && baseTheme as string == "Dark"
             ? ElementTheme.Dark
             : ElementTheme.Light;
+        foreach (WeakReference<FrameworkElement> reference in Roots)
+        {
+            if (reference.TryGetTarget(out FrameworkElement? root)) root.RequestedTheme = _elementTheme;
+        }
 
         CurrentTheme = name;
         return true;

@@ -29,6 +29,14 @@ public sealed partial class MainPage : Page
     private MarkerType _listType = MarkerType.Bullet;
 
     private EditorMode _mode = EditorMode.RichText;
+
+    private readonly record struct MarkdownState(string Text, int SelectionStart, int SelectionEnd);
+    private readonly Stack<MarkdownState> _markdownUndo = new();
+    private readonly Stack<MarkdownState> _markdownRedo = new();
+    private readonly DispatcherTimer _markdownTypingTimer = new() { Interval = TimeSpan.FromMilliseconds(800) };
+    private MarkdownState _markdownCurrent = new(string.Empty, 0, 0);
+    private bool _markdownTyping;
+    private bool _isHighlighting;
     private FontFamily? _richTextFont;
     private static readonly FontFamily MarkdownFont = new("Cascadia Mono, Consolas");
     private static readonly Regex MarkdownListPrefix = new(@"^(\s*)([-*+] |\d+\. )");
@@ -55,6 +63,12 @@ public sealed partial class MainPage : Page
         Loaded += MainPage_Loaded;
 
         ThemeTextBrush.RegisterPropertyChangedCallback(SolidColorBrush.ColorProperty, (s, dp) => OnThemeTextColorChanged());
+        MarkupBrush.RegisterPropertyChangedCallback(SolidColorBrush.ColorProperty, (s, dp) => RefreshMarkdownHighlight());
+        _markdownTypingTimer.Tick += (s, e) =>
+        {
+            _markdownTypingTimer.Stop();
+            _markdownTyping = false;
+        };
 
         NoteTextBox.AddHandler(PointerWheelChangedEvent, new PointerEventHandler(NoteTextBox_PointerWheelChanged), true);
     }
@@ -90,6 +104,7 @@ public sealed partial class MainPage : Page
 
     public void FocusEditor()
     {
+        if (MainWindow.Current?.IsSettingsOpen == true) return;
         DispatcherQueue.TryEnqueue(() => NoteTextBox.Focus(FocusState.Programmatic));
     }
 
@@ -113,7 +128,8 @@ public sealed partial class MainPage : Page
 
     private void NoteBoxControl(object sender, RoutedEventArgs e)
     {
-        if (_isLoadingNote) return;
+        if (_isLoadingNote || _isHighlighting) return;
+        if (_mode == EditorMode.Markdown) OnMarkdownTextChanged();
 
         UpdateToolbarState();
         UpdateDirtyState();
@@ -259,9 +275,9 @@ public sealed partial class MainPage : Page
         ApplyThemeTextColor();
         if (isClean)
         {
-            NoteTextBox.Document.GetText(TextGetOptions.FormatRtf, out string saved);
-            tab.SavedRtf = saved;
+            tab.SavedSnapshot = DocumentSnapshot(tab);
         }
+        ResetMarkdownHistory();
         NoteTextBox.Document.ClearUndoRedoHistory();
         NoteTextBox.Document.Selection.SetRange(tab.SelectionStart, tab.SelectionEnd);
         _isLoadingNote = false;
@@ -271,6 +287,121 @@ public sealed partial class MainPage : Page
     }
 
     private static SolidColorBrush ThemeTextBrush => (SolidColorBrush)Application.Current.Resources["NoteTextBrush"];
+
+    private static SolidColorBrush MarkupBrush => (SolidColorBrush)Application.Current.Resources["NoteMarkupBrush"];
+
+    private string DocumentSnapshot(NoteTab tab)
+    {
+        var options = tab.Mode == EditorMode.RichText ? TextGetOptions.FormatRtf : TextGetOptions.None;
+        NoteTextBox.Document.GetText(options, out string snapshot);
+        return snapshot;
+    }
+
+    private string PlainText()
+    {
+        NoteTextBox.Document.GetText(TextGetOptions.None, out string text);
+        return text;
+    }
+
+    private void HighlightMarkdown()
+    {
+        var document = NoteTextBox.Document;
+        string text = PlainText();
+
+        _isHighlighting = true;
+        document.BatchDisplayUpdates();
+        document.GetRange(0, text.Length).CharacterFormat.ForegroundColor = ThemeTextBrush.Color;
+        Windows.UI.Color markup = MarkupBrush.Color;
+        foreach (var (start, length) in MarkdownSyntax.FindMarkup(text))
+        {
+            document.GetRange(start, start + length).CharacterFormat.ForegroundColor = markup;
+        }
+        document.ApplyDisplayUpdates();
+        document.ClearUndoRedoHistory();
+        _isHighlighting = false;
+    }
+
+    private void RefreshMarkdownHighlight()
+    {
+        if (_mode != EditorMode.Markdown || ActiveTab is null) return;
+
+        _isLoadingNote = true;
+        HighlightMarkdown();
+        _isLoadingNote = false;
+    }
+
+    private MarkdownState CaptureMarkdownState(string text) =>
+        new(text, NoteTextBox.Document.Selection.StartPosition, NoteTextBox.Document.Selection.EndPosition);
+
+    private void ResetMarkdownHistory()
+    {
+        _markdownUndo.Clear();
+        _markdownRedo.Clear();
+        _markdownTyping = false;
+        _markdownTypingTimer.Stop();
+        _markdownCurrent = CaptureMarkdownState(PlainText());
+        if (_mode == EditorMode.Markdown) HighlightMarkdown();
+    }
+
+    private void OnMarkdownTextChanged()
+    {
+        string text = PlainText();
+        if (text == _markdownCurrent.Text) return;
+
+        if (!_markdownTyping)
+        {
+            _markdownUndo.Push(_markdownCurrent);
+            _markdownRedo.Clear();
+            _markdownTyping = true;
+        }
+        _markdownTypingTimer.Stop();
+        _markdownTypingTimer.Start();
+
+        _markdownCurrent = CaptureMarkdownState(text);
+        HighlightMarkdown();
+    }
+
+    private void BeginMarkdownEdit()
+    {
+        _markdownTyping = false;
+        _markdownTypingTimer.Stop();
+    }
+
+    private void RestoreMarkdownState(MarkdownState state)
+    {
+        _markdownCurrent = state;
+        BeginMarkdownEdit();
+
+        _isLoadingNote = true;
+        NoteTextBox.Document.SetText(TextSetOptions.None, state.Text.EndsWith('\r') ? state.Text[..^1] : state.Text);
+        ApplyThemeTextColor();
+        HighlightMarkdown();
+        NoteTextBox.Document.Selection.SetRange(state.SelectionStart, state.SelectionEnd);
+        _isLoadingNote = false;
+
+        _markdownCurrent = CaptureMarkdownState(PlainText());
+        UpdateDirtyState();
+        UpdateToolbarState();
+    }
+
+    public bool IsMarkdownMode => _mode == EditorMode.Markdown;
+
+    public void Redo()
+    {
+        if (_mode == EditorMode.Markdown)
+        {
+            if (_markdownRedo.Count > 0)
+            {
+                _markdownUndo.Push(CaptureMarkdownState(PlainText()));
+                RestoreMarkdownState(_markdownRedo.Pop());
+            }
+        }
+        else if (NoteTextBox.Document.CanRedo())
+        {
+            NoteTextBox.Document.Redo();
+        }
+        FocusEditor();
+    }
 
     private void ApplyThemeTextColor()
     {
@@ -294,11 +425,8 @@ public sealed partial class MainPage : Page
 
         _isLoadingNote = true;
         ApplyThemeTextColor();
-        if (wasClean)
-        {
-            NoteTextBox.Document.GetText(TextGetOptions.FormatRtf, out string saved);
-            tab.SavedRtf = saved;
-        }
+        if (_mode == EditorMode.Markdown) HighlightMarkdown();
+        if (wasClean) tab.SavedSnapshot = DocumentSnapshot(tab);
         _isLoadingNote = false;
 
         UpdateDirtyState();
@@ -325,8 +453,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        NoteTextBox.Document.GetText(TextGetOptions.FormatRtf, out string rtf);
-        tab.IsDirty = rtf != tab.SavedRtf;
+        tab.IsDirty = DocumentSnapshot(tab) != tab.SavedSnapshot;
     }
 
     public async Task<bool> SaveAsync()
@@ -540,8 +667,7 @@ public sealed partial class MainPage : Page
             return false;
         }
 
-        NoteTextBox.Document.GetText(TextGetOptions.FormatRtf, out string saved);
-        tab.SavedRtf = saved;
+        tab.SavedSnapshot = DocumentSnapshot(tab);
         tab.IsDirty = false;
         return true;
     }
@@ -556,12 +682,13 @@ public sealed partial class MainPage : Page
         NoteTextBox.FontFamily = markdown ? MarkdownFont : _richTextFont;
         NoteTextBox.ClipboardCopyFormat = rich ? RichEditClipboardFormat.AllFormats : RichEditClipboardFormat.PlainText;
 
-        Visibility formatting = rich || markdown ? Visibility.Visible : Visibility.Collapsed;
-        BoldButton.Visibility = formatting;
-        ItalicButton.Visibility = formatting;
-        StrikethroughButton.Visibility = formatting;
-        ListButton.Visibility = formatting;
-        UnderlineButton.Visibility = rich ? Visibility.Visible : Visibility.Collapsed;
+        Toolbar?.SetMode(mode);
+        ViewModel.StatusFileType = mode switch
+        {
+            EditorMode.PlainText => "Plain text",
+            EditorMode.Markdown => "Markdown",
+            _ => "Rich text",
+        };
 
         ViewModel.IsRichText = rich;
     }
@@ -597,15 +724,9 @@ public sealed partial class MainPage : Page
         AfterFormatting();
     }
 
-    private void BoldButton_Click(object sender, RoutedEventArgs e) => ToggleBold();
+    private static FormattingToolbar? Toolbar => MainWindow.Current?.FormattingToolbar;
 
-    private void ItalicButton_Click(object sender, RoutedEventArgs e) => ToggleItalic();
-
-    private void UnderlineButton_Click(object sender, RoutedEventArgs e) => ToggleUnderline();
-
-    private void StrikethroughButton_Click(object sender, RoutedEventArgs e) => ToggleStrikethrough();
-
-    private void ListButton_Click(object sender, RoutedEventArgs e)
+    public void ToggleList()
     {
         if (_mode == EditorMode.Markdown)
         {
@@ -618,6 +739,7 @@ public sealed partial class MainPage : Page
 
     private void ToggleMarkdownWrap(string marker)
     {
+        BeginMarkdownEdit();
         var document = NoteTextBox.Document;
         var selection = document.Selection;
         int start = selection.StartPosition;
@@ -658,6 +780,7 @@ public sealed partial class MainPage : Page
 
     private void ToggleMarkdownList(MarkerType style, bool forceApply)
     {
+        BeginMarkdownEdit();
         var range = NoteTextBox.Document.Selection.GetClone();
         range.Expand(TextRangeUnit.Paragraph);
         range.GetText(TextGetOptions.None, out string text);
@@ -691,11 +814,10 @@ public sealed partial class MainPage : Page
         NoteTextBox.Document.Selection.SetRange(range.StartPosition, range.StartPosition + result.Length);
     }
 
-    private void ListStyleItem_Click(object sender, RoutedEventArgs e)
+    public void SetListStyle(MarkerType style)
     {
-        _listType = ReferenceEquals(sender, NumberedListItem) ? MarkerType.Arabic : MarkerType.Bullet;
-        BulletListIcon.Visibility = _listType == MarkerType.Bullet ? Visibility.Visible : Visibility.Collapsed;
-        NumberedListIcon.Visibility = _listType == MarkerType.Arabic ? Visibility.Visible : Visibility.Collapsed;
+        _listType = style;
+        Toolbar?.SetListStyle(style);
 
         if (_mode == EditorMode.Markdown)
         {
@@ -724,40 +846,74 @@ public sealed partial class MainPage : Page
         NoteTextBox.Focus(FocusState.Programmatic);
     }
 
-    private void NoteTextBox_SelectionChanged(object sender, RoutedEventArgs e) => UpdateToolbarState();
+    private void NoteTextBox_SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (_mode == EditorMode.Markdown && !_isHighlighting && !_isLoadingNote)
+        {
+            string text = PlainText();
+            if (text == _markdownCurrent.Text) _markdownCurrent = CaptureMarkdownState(text);
+        }
+        UpdateToolbarState();
+    }
 
     private void UpdateToolbarState()
     {
         UpdateEditState();
         if (_mode != EditorMode.RichText)
         {
-            BoldButton.IsChecked = false;
-            ItalicButton.IsChecked = false;
-            UnderlineButton.IsChecked = false;
-            StrikethroughButton.IsChecked = false;
-            ListButton.IsChecked = false;
+            Toolbar?.SetState(false, false, false, false, false);
             return;
         }
 
         var character = NoteTextBox.Document.Selection.CharacterFormat;
-        BoldButton.IsChecked = character.Bold == FormatEffect.On;
-        ItalicButton.IsChecked = character.Italic == FormatEffect.On;
-        UnderlineButton.IsChecked = character.Underline is not (UnderlineType.None or UnderlineType.Undefined);
-        StrikethroughButton.IsChecked = character.Strikethrough == FormatEffect.On;
-        ListButton.IsChecked = IsList(NoteTextBox.Document.Selection.ParagraphFormat.ListType);
+        Toolbar?.SetState(
+            character.Bold == FormatEffect.On,
+            character.Italic == FormatEffect.On,
+            character.Underline is not (UnderlineType.None or UnderlineType.Undefined),
+            character.Strikethrough == FormatEffect.On,
+            IsList(NoteTextBox.Document.Selection.ParagraphFormat.ListType));
     }
 
     private static bool IsList(MarkerType type) => type is not (MarkerType.None or MarkerType.Undefined);
 
+    private static readonly System.Text.RegularExpressions.Regex WordPattern = new(@"\S+");
+
+    private void UpdateStatus()
+    {
+        string text = PlainText();
+        if (text.EndsWith('\r')) text = text[..^1];
+
+        int caret = Math.Min(NoteTextBox.Document.Selection.EndPosition, text.Length);
+        int lineStart = caret == 0 ? 0 : text.LastIndexOf('\r', caret - 1) + 1;
+        int line = text.AsSpan(0, caret).Count('\r') + 1;
+        ViewModel.StatusPosition = $"Ln {line}, Col {caret - lineStart + 1}";
+
+        int words = WordPattern.Count(text);
+        int characters = text.Length - text.Count(c => c == '\r');
+        ViewModel.StatusCounts = $"{words} {(words == 1 ? "word" : "words")}, {characters} {(characters == 1 ? "character" : "characters")}";
+    }
+
     private void UpdateEditState()
     {
+        UpdateStatus();
         ViewModel.HasSelection = NoteTextBox.Document.Selection.Length != 0;
-        ViewModel.CanUndo = NoteTextBox.Document.CanUndo();
+        ViewModel.CanUndo = _mode == EditorMode.Markdown ? _markdownUndo.Count > 0 : NoteTextBox.Document.CanUndo();
     }
 
     public void Undo()
     {
-        if (NoteTextBox.Document.CanUndo()) NoteTextBox.Document.Undo();
+        if (_mode == EditorMode.Markdown)
+        {
+            if (_markdownUndo.Count > 0)
+            {
+                _markdownRedo.Push(CaptureMarkdownState(PlainText()));
+                RestoreMarkdownState(_markdownUndo.Pop());
+            }
+        }
+        else if (NoteTextBox.Document.CanUndo())
+        {
+            NoteTextBox.Document.Undo();
+        }
         FocusEditor();
     }
 
@@ -1056,6 +1212,7 @@ public sealed partial class MainPage : Page
         _zoom = Math.Clamp(Math.Round(zoom, 1), MinZoom, MaxZoom);
         ApplyZoom();
         ZoomIndicator.Text = $"{_zoom * 100:0}%";
+        ViewModel.StatusZoom = ZoomIndicator.Text;
         ZoomIndicator.Visibility = _zoom == 1.0 ? Visibility.Collapsed : Visibility.Visible;
         FocusEditor();
     }
@@ -1084,15 +1241,24 @@ public sealed partial class MainPage : Page
         e.Handled = true;
     }
 
-    private async void PythonButton_Click(object sender, RoutedEventArgs e)
+    private async void PythonButton_Click(object sender, RoutedEventArgs e) => await SendPromptAsync();
+
+    private async void PromptBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (ViewModel.IsPythonBusy) return;
+        if (e.Key != VirtualKey.Enter) return;
+        e.Handled = true;
+        await SendPromptAsync();
+    }
+
+    private async Task SendPromptAsync()
+    {
+        string prompt = PromptBox.Text.Trim();
+        if (ViewModel.IsPythonBusy || prompt.Length == 0) return;
         SetPythonBusy(true);
 
         try
         {
-            NoteTextBox.Document.GetText(TextGetOptions.None, out string text);
-            PythonResult result = await PythonService.RunAsync("process", text.TrimEnd('\r'));
+            PythonResult result = await PythonService.RunAsync("process", prompt);
 
             if (result.Error is not null)
             {
@@ -1100,15 +1266,10 @@ public sealed partial class MainPage : Page
                 return;
             }
 
-            if (result.Text is not null)
-            {
-                NoteTextBox.Document.SetText(TextSetOptions.None, result.Text);
-            }
-
-            if (result.Message is not null)
-            {
-                ShowInfo(InfoBarSeverity.Informational, result.Message);
-            }
+            PromptBox.Text = string.Empty;
+            string? reply = string.Join(Environment.NewLine,
+                new[] { result.Text, result.Message }.Where(r => !string.IsNullOrEmpty(r)));
+            if (!string.IsNullOrEmpty(reply)) ShowInfo(InfoBarSeverity.Informational, reply);
         }
         finally
         {

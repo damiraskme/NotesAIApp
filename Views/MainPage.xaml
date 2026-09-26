@@ -10,40 +10,10 @@
     mc:Ignorable="d">
 
     <Page.Resources>
-        <Style x:Key="NoteBoxButtonStyle" TargetType="ToggleButton">
-            <Setter Property="Width" Value="36" />
-            <Setter Property="Height" Value="36" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="4" />
-            <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
-            <Setter Property="AllowFocusOnInteraction" Value="False" />
-        </Style>
-
         <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
         <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
         <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
         <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
-
-        <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
-        <StaticResource x:Key="ToggleButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
-        <StaticResource x:Key="ToggleButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
-        <StaticResource x:Key="ToggleButtonBackgroundChecked" ResourceKey="NoteCheckedBrush" />
-        <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver" ResourceKey="NoteCheckedHoverBrush" />
-        <StaticResource x:Key="ToggleButtonBackgroundCheckedPressed" ResourceKey="NoteCheckedHoverBrush" />
-        <StaticResource x:Key="ToggleButtonForeground" ResourceKey="NoteTextBrush" />
-        <StaticResource x:Key="ToggleButtonForegroundPointerOver" ResourceKey="NoteTextBrush" />
-        <StaticResource x:Key="ToggleButtonForegroundPressed" ResourceKey="NoteTextBrush" />
-        <StaticResource x:Key="ToggleButtonForegroundChecked" ResourceKey="NoteCheckedTextBrush" />
-        <StaticResource x:Key="ToggleButtonForegroundCheckedPointerOver" ResourceKey="NoteCheckedTextBrush" />
-        <StaticResource x:Key="ToggleButtonForegroundCheckedPressed" ResourceKey="NoteCheckedTextBrush" />
-        <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="Transparent" />
 
         <Style x:Key="FindBarButtonStyle" TargetType="Button">
             <Setter Property="MinWidth" Value="32" />
@@ -152,80 +122,39 @@
                  IsOpen="False"
                  IsClosable="True" />
 
-        <Grid Grid.Row="2" ColumnSpacing="4" Margin="0,4,0,0">
+        <Grid Grid.Row="2" ColumnSpacing="8" Margin="0,4,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ToggleButton x:Name="BoldButton" Grid.Column="0"
-                    Style="{StaticResource NoteBoxButtonStyle}"
-                    ToolTipService.ToolTip="Bold (Ctrl+B)"
-                    Click="BoldButton_Click">
-                <FontIcon Glyph="&#xE8DD;" FontSize="14" />
-            </ToggleButton>
+            <TextBox x:Name="PromptBox"
+                     PlaceholderText="Send to Python..."
+                     VerticalAlignment="Center"
+                     CornerRadius="16"
+                     Padding="12,6,12,6"
+                     KeyDown="PromptBox_KeyDown">
+                <TextBox.Resources>
+                    <StaticResource x:Key="TextControlBackground" ResourceKey="NoteMenuBrush" />
+                    <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="NoteMenuBrush" />
+                    <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="NoteMenuBrush" />
+                    <StaticResource x:Key="TextControlBorderBrush" ResourceKey="NoteBorderBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="NoteBorderBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="NoteAccentBrush" />
+                    <StaticResource x:Key="TextControlForeground" ResourceKey="NoteTextBrush" />
+                    <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="NoteTextBrush" />
+                    <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="NoteTextBrush" />
+                </TextBox.Resources>
+            </TextBox>
 
-            <ToggleButton x:Name="ItalicButton" Grid.Column="1"
-                    Style="{StaticResource NoteBoxButtonStyle}"
-                    ToolTipService.ToolTip="Italic (Ctrl+I)"
-                    Click="ItalicButton_Click">
-                <FontIcon Glyph="&#xE8DB;" FontSize="14" />
-            </ToggleButton>
-
-            <ToggleButton x:Name="UnderlineButton" Grid.Column="2"
-                    Style="{StaticResource NoteBoxButtonStyle}"
-                    ToolTipService.ToolTip="Underline (Ctrl+U)"
-                    Click="UnderlineButton_Click">
-                <FontIcon Glyph="&#xE8DC;" FontSize="14" />
-            </ToggleButton>
-
-            <ToggleButton x:Name="StrikethroughButton" Grid.Column="3"
-                    Style="{StaticResource NoteBoxButtonStyle}"
-                    ToolTipService.ToolTip="Strikethrough"
-                    Click="StrikethroughButton_Click">
-                <FontIcon Glyph="&#xEDE0;" FontSize="14" />
-            </ToggleButton>
-
-            <ToggleButton x:Name="ListButton" Grid.Column="4"
-                    Style="{StaticResource NoteBoxButtonStyle}"
-                    ToolTipService.ToolTip="List (right-click for style)"
-                    Click="ListButton_Click">
-                <ToggleButton.ContextFlyout>
-                    <MenuFlyout>
-                        <RadioMenuFlyoutItem x:Name="BulletListItem" Text="Bullets"
-                                             GroupName="ListStyle" IsChecked="True"
-                                             Click="ListStyleItem_Click">
-                            <RadioMenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE8FD;" />
-                            </RadioMenuFlyoutItem.Icon>
-                        </RadioMenuFlyoutItem>
-                        <RadioMenuFlyoutItem x:Name="NumberedListItem" Text="Numbers (1, 2, 3)"
-                                             GroupName="ListStyle"
-                                             Click="ListStyleItem_Click" />
-                    </MenuFlyout>
-                </ToggleButton.ContextFlyout>
-                <Grid>
-                    <FontIcon x:Name="BulletListIcon" Glyph="&#xE8FD;" FontSize="14" />
-                    <TextBlock x:Name="NumberedListIcon" Text="123" FontSize="11" FontWeight="SemiBold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                               Visibility="Collapsed" />
-                </Grid>
-            </ToggleButton>
-
-            <Button x:Name="PythonButton" Grid.Column="5"
-                    AllowFocusOnInteraction="False"
-                    Height="36"
-                    Margin="8,0,0,0"
-                    HorizontalAlignment="Stretch"
-                    CornerRadius="4"
+            <Button x:Name="PythonButton" Grid.Column="1"
+                    Width="36" Height="36" Padding="0"
+                    CornerRadius="18"
                     BorderThickness="0"
+                    AllowFocusOnInteraction="False"
                     Background="{StaticResource NoteAccentBrush}"
                     Foreground="{StaticResource NoteAccentTextBrush}"
-                    ToolTipService.ToolTip="Run Python backend"
+                    ToolTipService.ToolTip="Send to Python (Enter)"
                     Click="PythonButton_Click">
                 <Button.Resources>
                     <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteAccentHoverBrush" />
@@ -233,12 +162,11 @@
                     <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="NoteAccentTextBrush" />
                     <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="NoteAccentTextBrush" />
                 </Button.Resources>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon x:Name="PythonIcon" Glyph="&#xE945;" FontSize="14" />
-                    <ProgressRing x:Name="PythonProgress" Width="14" Height="14"
+                <Grid>
+                    <FontIcon x:Name="PythonIcon" Glyph="&#xE724;" FontSize="14" />
+                    <ProgressRing x:Name="PythonProgress" Width="16" Height="16"
                                   IsActive="False" Visibility="Collapsed" />
-                    <TextBlock Text="Run" VerticalAlignment="Center" />
-                </StackPanel>
+                </Grid>
             </Button>
         </Grid>
     </Grid>
