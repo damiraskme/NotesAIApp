@@ -2,7 +2,9 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using MyApp.Models;
 using MyApp.Services;
 using MyApp.ViewModels;
@@ -42,6 +44,7 @@ public sealed partial class MainWindow : Window
         }
         BuildThemeMenu();
         BuildRecentMenu();
+        BuildNewMenus();
         ViewModel.Storage.State.Session.PropertyChanged += Session_PropertyChanged;
         RootGrid.PreviewKeyDown += RootGrid_PreviewKeyDown;
 
@@ -290,9 +293,62 @@ public sealed partial class MainWindow : Window
 
     private MainPage? Page => RootFrame.Content as MainPage;
 
-    private void NewTab_Click(object sender, RoutedEventArgs e) => Page?.NewTab();
+    private static readonly (string Text, string Extension, string Shortcut)[] NewTabTypes =
+    {
+        ("Plain text (.txt)", ".txt", "Ctrl+1"),
+        ("Markdown (.md)", ".md", "Ctrl+2"),
+        ("Rich text (.rtf)", ".rtf", "Ctrl+3"),
+    };
 
-    private void NewMarkdownTab_Click(object sender, RoutedEventArgs e) => Page?.NewTab(".md");
+    private readonly MenuFlyout _newFlyout = new();
+
+    private void BuildNewMenus()
+    {
+        foreach (var (text, extension, shortcut) in NewTabTypes)
+        {
+            NewMenu.Items.Add(CreateNewTabItem(text, extension, shortcut));
+            _newFlyout.Items.Add(CreateNewTabItem(text, extension, shortcut));
+        }
+
+        _newFlyout.Opened += (s, e) => (_newFlyout.Items[0] as Control)?.Focus(FocusState.Keyboard);
+    }
+
+    private MenuFlyoutItem CreateNewTabItem(string text, string extension, string shortcut)
+    {
+        var item = new MenuFlyoutItem { Text = text, KeyboardAcceleratorTextOverride = shortcut };
+        item.Click += (s, e) => Page?.NewTab(extension);
+        item.KeyDown += NewTabItem_KeyDown;
+        return item;
+    }
+
+    private void NewTabItem_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (NewTabTypeForKey(e.Key) is not string extension) return;
+
+        e.Handled = true;
+        foreach (Popup popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(Content.XamlRoot))
+        {
+            popup.IsOpen = false;
+        }
+        Page?.NewTab(extension);
+    }
+
+    private static string? NewTabTypeForKey(VirtualKey key) => key switch
+    {
+        VirtualKey.Number1 or VirtualKey.NumberPad1 => NewTabTypes[0].Extension,
+        VirtualKey.Number2 or VirtualKey.NumberPad2 => NewTabTypes[1].Extension,
+        VirtualKey.Number3 or VirtualKey.NumberPad3 => NewTabTypes[2].Extension,
+        _ => null,
+    };
+
+    private void ShowNewMenu()
+    {
+        _newFlyout.ShowAt(FileMenu, new FlyoutShowOptions
+        {
+            Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
+            ShowMode = FlyoutShowMode.Standard,
+        });
+    }
 
     private void NewWindow_Click(object sender, RoutedEventArgs e) => OpenNewWindow();
 
@@ -410,9 +466,16 @@ public sealed partial class MainWindow : Window
         bool alt = IsDown(VirtualKey.Menu);
         VirtualKey key = e.Key;
 
+        bool inTextBox = FocusManager.GetFocusedElement(Content.XamlRoot) is TextBox;
+        string? newTabType = NewTabTypeForKey(key);
+
         Func<Task>? action = (ctrl, shift, alt, key) switch
         {
-            (true, false, false, VirtualKey.N) => () => { page.NewTab(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.N) => () => { ShowNewMenu(); return Task.CompletedTask; },
+            (true, false, false, _) when newTabType is not null => () => { page.NewTab(newTabType); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.B) when !inTextBox => () => { page.ToggleBold(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.I) when !inTextBox => () => { page.ToggleItalic(); return Task.CompletedTask; },
+            (true, false, false, VirtualKey.U) when !inTextBox => () => { page.ToggleUnderline(); return Task.CompletedTask; },
             (true, true, false, VirtualKey.N) => () => { OpenNewWindow(); return Task.CompletedTask; },
             (true, false, false, VirtualKey.O) => page.OpenFileAsync,
             (true, false, false, VirtualKey.S) => SaveActiveAsync,

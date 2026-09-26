@@ -29,6 +29,13 @@ namespace MyApp.Models
             ? (DefaultExtension == ".rtf" ? "Untitled" : "Untitled" + DefaultExtension)
             : Path.GetFileNameWithoutExtension(FilePath);
 
-        public bool IsPlainTextFile => Extension is ".txt" or ".md";
+        public EditorMode Mode => Extension switch
+        {
+            ".txt" => EditorMode.PlainText,
+            ".md" => EditorMode.Markdown,
+            _ => EditorMode.RichText,
+        };
+
+        public bool IsPlainTextFile => Mode != EditorMode.RichText;
     }
 }

@@ -12,6 +12,8 @@ using MyApp.Services;
 using MyApp.ViewModels;
 using Microsoft.Windows.Storage.Pickers;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace MyApp;
 
@@ -25,6 +27,11 @@ public sealed partial class MainPage : Page
     private bool _isLoadingNote;
 
     private MarkerType _listType = MarkerType.Bullet;
+
+    private EditorMode _mode = EditorMode.RichText;
+    private FontFamily? _richTextFont;
+    private static readonly FontFamily MarkdownFont = new("Cascadia Mono, Consolas");
+    private static readonly Regex MarkdownListPrefix = new(@"^(\s*)([-*+] |\d+\. )");
 
     private NoteTab? ActiveTab => ViewModel.ActiveTab;
 
@@ -234,6 +241,7 @@ public sealed partial class MainPage : Page
         if (ActiveTab is not NoteTab tab) return;
 
         _isLoadingNote = true;
+        ApplyEditorMode(tab.Mode);
         bool isClean;
         if (tab.Rtf is null)
         {
@@ -346,8 +354,14 @@ public sealed partial class MainPage : Page
         FocusEditor();
         if (result is null) return false;
 
+        EditorMode previousMode = tab.Mode;
         tab.FilePath = result.Path;
         bool saved = WriteActiveTab();
+        if (saved && tab.Mode != previousMode)
+        {
+            tab.Rtf = null;
+            LoadActiveTab();
+        }
         ViewModel.AddRecentFile(result.Path);
         ViewModel.SaveSession();
         return saved;
@@ -532,34 +546,149 @@ public sealed partial class MainPage : Page
         return true;
     }
 
-    private void BoldButton_Click(object sender, RoutedEventArgs e)
+    private void ApplyEditorMode(EditorMode mode)
     {
-        NoteTextBox.Document.Selection.CharacterFormat.Bold = FormatEffect.Toggle;
+        _mode = mode;
+        _richTextFont ??= NoteTextBox.FontFamily;
+
+        bool rich = mode == EditorMode.RichText;
+        bool markdown = mode == EditorMode.Markdown;
+        NoteTextBox.FontFamily = markdown ? MarkdownFont : _richTextFont;
+        NoteTextBox.ClipboardCopyFormat = rich ? RichEditClipboardFormat.AllFormats : RichEditClipboardFormat.PlainText;
+
+        Visibility formatting = rich || markdown ? Visibility.Visible : Visibility.Collapsed;
+        BoldButton.Visibility = formatting;
+        ItalicButton.Visibility = formatting;
+        StrikethroughButton.Visibility = formatting;
+        ListButton.Visibility = formatting;
+        UnderlineButton.Visibility = rich ? Visibility.Visible : Visibility.Collapsed;
+
+        ViewModel.IsRichText = rich;
+    }
+
+    public void ToggleBold()
+    {
+        if (_mode == EditorMode.Markdown) ToggleMarkdownWrap("**");
+        else if (_mode == EditorMode.RichText) NoteTextBox.Document.Selection.CharacterFormat.Bold = FormatEffect.Toggle;
         AfterFormatting();
     }
 
-    private void ItalicButton_Click(object sender, RoutedEventArgs e)
+    public void ToggleItalic()
     {
-        NoteTextBox.Document.Selection.CharacterFormat.Italic = FormatEffect.Toggle;
+        if (_mode == EditorMode.Markdown) ToggleMarkdownWrap("*");
+        else if (_mode == EditorMode.RichText) NoteTextBox.Document.Selection.CharacterFormat.Italic = FormatEffect.Toggle;
         AfterFormatting();
     }
 
-    private void UnderlineButton_Click(object sender, RoutedEventArgs e)
+    public void ToggleUnderline()
     {
-        var format = NoteTextBox.Document.Selection.CharacterFormat;
-        format.Underline = format.Underline == UnderlineType.None ? UnderlineType.Single : UnderlineType.None;
+        if (_mode == EditorMode.RichText)
+        {
+            var format = NoteTextBox.Document.Selection.CharacterFormat;
+            format.Underline = format.Underline == UnderlineType.None ? UnderlineType.Single : UnderlineType.None;
+        }
         AfterFormatting();
     }
 
-    private void StrikethroughButton_Click(object sender, RoutedEventArgs e)
+    public void ToggleStrikethrough()
     {
-        NoteTextBox.Document.Selection.CharacterFormat.Strikethrough = FormatEffect.Toggle;
+        if (_mode == EditorMode.Markdown) ToggleMarkdownWrap("~~");
+        else if (_mode == EditorMode.RichText) NoteTextBox.Document.Selection.CharacterFormat.Strikethrough = FormatEffect.Toggle;
         AfterFormatting();
     }
+
+    private void BoldButton_Click(object sender, RoutedEventArgs e) => ToggleBold();
+
+    private void ItalicButton_Click(object sender, RoutedEventArgs e) => ToggleItalic();
+
+    private void UnderlineButton_Click(object sender, RoutedEventArgs e) => ToggleUnderline();
+
+    private void StrikethroughButton_Click(object sender, RoutedEventArgs e) => ToggleStrikethrough();
 
     private void ListButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_mode == EditorMode.Markdown)
+        {
+            ToggleMarkdownList(_listType, forceApply: false);
+            AfterFormatting();
+            return;
+        }
         ApplyList(IsList(NoteTextBox.Document.Selection.ParagraphFormat.ListType) ? MarkerType.None : _listType);
+    }
+
+    private void ToggleMarkdownWrap(string marker)
+    {
+        var document = NoteTextBox.Document;
+        var selection = document.Selection;
+        int start = selection.StartPosition;
+        int end = selection.EndPosition;
+        int m = marker.Length;
+        selection.GetText(TextGetOptions.None, out string text);
+        while (text.EndsWith('\r'))
+        {
+            text = text[..^1];
+            end--;
+        }
+        selection.SetRange(start, end);
+
+        if (start >= m)
+        {
+            document.GetRange(start - m, start).GetText(TextGetOptions.None, out string before);
+            document.GetRange(end, end + m).GetText(TextGetOptions.None, out string after);
+            if (before == marker && after == marker)
+            {
+                document.GetRange(end, end + m).SetText(TextSetOptions.None, string.Empty);
+                document.GetRange(start - m, start).SetText(TextSetOptions.None, string.Empty);
+                selection.SetRange(start - m, end - m);
+                return;
+            }
+        }
+
+        if (text.Length > 2 * m && text.StartsWith(marker) && text.EndsWith(marker))
+        {
+            string inner = text[m..^m];
+            selection.SetText(TextSetOptions.None, inner);
+            selection.SetRange(start, start + inner.Length);
+            return;
+        }
+
+        selection.SetText(TextSetOptions.None, marker + text + marker);
+        selection.SetRange(start + m, start + m + text.Length);
+    }
+
+    private void ToggleMarkdownList(MarkerType style, bool forceApply)
+    {
+        var range = NoteTextBox.Document.Selection.GetClone();
+        range.Expand(TextRangeUnit.Paragraph);
+        range.GetText(TextGetOptions.None, out string text);
+        if (text.EndsWith('\r'))
+        {
+            range.MoveEnd(TextRangeUnit.Character, -1);
+            text = text[..^1];
+        }
+
+        string[] lines = text.Split('\r');
+        bool allListed = lines.Where(l => l.Trim().Length > 0).All(l => MarkdownListPrefix.IsMatch(l));
+        bool remove = allListed && !forceApply;
+
+        int number = 1;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string content = MarkdownListPrefix.Replace(lines[i], "$1");
+            if (remove || content.Trim().Length == 0)
+            {
+                lines[i] = remove ? content : lines[i];
+                continue;
+            }
+
+            Match indent = Regex.Match(content, @"^\s*");
+            string prefix = style == MarkerType.Arabic ? $"{number++}. " : "- ";
+            lines[i] = indent.Value + prefix + content[indent.Length..];
+        }
+
+        string result = string.Join('\r', lines);
+        range.SetText(TextSetOptions.None, result);
+        NoteTextBox.Document.Selection.SetRange(range.StartPosition, range.StartPosition + result.Length);
     }
 
     private void ListStyleItem_Click(object sender, RoutedEventArgs e)
@@ -568,6 +697,12 @@ public sealed partial class MainPage : Page
         BulletListIcon.Visibility = _listType == MarkerType.Bullet ? Visibility.Visible : Visibility.Collapsed;
         NumberedListIcon.Visibility = _listType == MarkerType.Arabic ? Visibility.Visible : Visibility.Collapsed;
 
+        if (_mode == EditorMode.Markdown)
+        {
+            ToggleMarkdownList(_listType, forceApply: true);
+            AfterFormatting();
+            return;
+        }
         ApplyList(_listType);
     }
 
@@ -593,13 +728,23 @@ public sealed partial class MainPage : Page
 
     private void UpdateToolbarState()
     {
+        UpdateEditState();
+        if (_mode != EditorMode.RichText)
+        {
+            BoldButton.IsChecked = false;
+            ItalicButton.IsChecked = false;
+            UnderlineButton.IsChecked = false;
+            StrikethroughButton.IsChecked = false;
+            ListButton.IsChecked = false;
+            return;
+        }
+
         var character = NoteTextBox.Document.Selection.CharacterFormat;
         BoldButton.IsChecked = character.Bold == FormatEffect.On;
         ItalicButton.IsChecked = character.Italic == FormatEffect.On;
         UnderlineButton.IsChecked = character.Underline is not (UnderlineType.None or UnderlineType.Undefined);
         StrikethroughButton.IsChecked = character.Strikethrough == FormatEffect.On;
         ListButton.IsChecked = IsList(NoteTextBox.Document.Selection.ParagraphFormat.ListType);
-        UpdateEditState();
     }
 
     private static bool IsList(MarkerType type) => type is not (MarkerType.None or MarkerType.Undefined);
@@ -628,10 +773,30 @@ public sealed partial class MainPage : Page
         FocusEditor();
     }
 
-    public void Paste()
+    public async void Paste()
     {
-        NoteTextBox.Document.Selection.Paste(0);
+        if (_mode == EditorMode.RichText) NoteTextBox.Document.Selection.Paste(0);
+        else await PastePlainTextAsync();
         FocusEditor();
+    }
+
+    private async void NoteTextBox_Paste(object sender, TextControlPasteEventArgs e)
+    {
+        if (_mode == EditorMode.RichText) return;
+
+        e.Handled = true;
+        await PastePlainTextAsync();
+    }
+
+    private async Task PastePlainTextAsync()
+    {
+        DataPackageView content = Clipboard.GetContent();
+        if (!content.Contains(StandardDataFormats.Text)) return;
+
+        string text = await content.GetTextAsync();
+        var selection = NoteTextBox.Document.Selection;
+        selection.SetText(TextSetOptions.None, text.Replace("\r\n", "\r").Replace('\n', '\r'));
+        selection.Collapse(false);
     }
 
     public void Delete()
@@ -651,6 +816,8 @@ public sealed partial class MainPage : Page
 
     public void ClearFormatting()
     {
+        if (_mode != EditorMode.RichText) return;
+
         var selection = NoteTextBox.Document.Selection;
         selection.CharacterFormat.Bold = FormatEffect.Off;
         selection.CharacterFormat.Italic = FormatEffect.Off;

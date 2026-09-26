@@ -22,7 +22,14 @@ namespace MyApp.ViewModels
         public partial bool IsPythonBusy { get; set; } = false;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanClearFormatting))]
         public partial bool HasSelection { get; set; }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanClearFormatting))]
+        public partial bool IsRichText { get; set; } = true;
+
+        public bool CanClearFormatting => HasSelection && IsRichText;
 
         [ObservableProperty]
         public partial bool CanUndo { get; set; }

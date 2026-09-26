@@ -171,10 +171,9 @@
 
         <Border Grid.Row="1" Background="{StaticResource NoteMenuBarBrush}"/>
         <MenuBar Grid.Row="1" VerticalAlignment="Center">
-            <MenuBarItem Title="File" AllowFocusOnInteraction="False">
-                <MenuFlyoutItem Text="New tab" Click="NewTab_Click" KeyboardAcceleratorTextOverride="Ctrl+N" />
+            <MenuBarItem x:Name="FileMenu" Title="File" AllowFocusOnInteraction="False">
+                <MenuFlyoutSubItem x:Name="NewMenu" Text="New" />
                 <MenuFlyoutItem Text="New window" Click="NewWindow_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+N" />
-                <MenuFlyoutItem Text="New Markdown tab" Click="NewMarkdownTab_Click" />
                 <MenuFlyoutItem Text="Open" Click="OpenFile_Click" KeyboardAcceleratorTextOverride="Ctrl+O" />
                 <MenuFlyoutSubItem x:Name="RecentMenu" Text="Recent" />
                 <MenuFlyoutItem Text="Save" Click="Save_Click" KeyboardAcceleratorTextOverride="Ctrl+S" />
@@ -204,7 +203,7 @@
                                 IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Clear formatting" Click="ClearFormatting_Click"
-                                IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" />
+                                IsEnabled="{x:Bind ViewModel.CanClearFormatting, Mode=OneWay}" />
                 <MenuFlyoutItem Text="Define with Bing" Click="Define_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Find" Click="Find_Click" KeyboardAcceleratorTextOverride="Ctrl+F" />

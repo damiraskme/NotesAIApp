@@ -76,6 +76,8 @@
                          HorizontalAlignment="Left"
                          VerticalAlignment="Top"
                          SelectionHighlightColorWhenNotFocused="{ThemeResource TextControlSelectionHighlightColor}"
+                         DisabledFormattingAccelerators="All"
+                         Paste="NoteTextBox_Paste"
                          TextChanged="NoteBoxControl"
                          SelectionChanged="NoteTextBox_SelectionChanged">
                 <RichEditBox.Resources>
