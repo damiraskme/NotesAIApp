@@ -73,6 +73,7 @@ public sealed partial class MainWindow : Window
             if (e.PropertyName == nameof(MainViewModel.ActiveTab) && ViewModel.ActiveTab is NoteTab tab)
             {
                 DispatcherQueue.TryEnqueue(() => BringTabIntoView(tab));
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => BringTabIntoView(tab));
             }
         };
 
@@ -99,6 +100,12 @@ public sealed partial class MainWindow : Window
             return;
 
         double scale = DragRegion.XamlRoot?.RasterizationScale ?? 1.0;
+
+        if (IsSettingsOpen)
+        {
+            SetSettingsDragRegion(scale);
+            return;
+        }
 
         var dragRegionTransform = DragRegion.TransformToVisual(null);
         var dragRegionBounds = dragRegionTransform.TransformBounds(
@@ -137,6 +144,17 @@ public sealed partial class MainWindow : Window
                 (int)(dragRegionBounds.Y * scale),
                 rect2Width,
                 (int)(dragRegionBounds.Height * scale)));
+        }
+
+        double controlsHeight = DragRegion.RowDefinitions[0].ActualHeight;
+        int bottomStripHeight = (int)((dragRegionBounds.Height - controlsHeight) * scale);
+        if (bottomStripHeight > 0)
+        {
+            dragRects.Add(new RectInt32(
+                (int)(dragRegionBounds.X * scale),
+                (int)((dragRegionBounds.Y + controlsHeight) * scale),
+                (int)(dragRegionBounds.Width * scale),
+                bottomStripHeight));
         }
 
         var nonClientSource = InputNonClientPointerSource.GetForWindowId(AppWindow.Id);
@@ -227,9 +245,23 @@ public sealed partial class MainWindow : Window
 
     private void BringTabIntoView(NoteTab tab)
     {
-        if (TabItems.ContainerFromItem(tab) is UIElement container)
+        TabStrip.UpdateLayout();
+        UpdateTabArrows();
+        TabStrip.UpdateLayout();
+        if (TabItems.ContainerFromItem(tab) is not FrameworkElement container || container.ActualWidth == 0) return;
+
+        var bounds = container.TransformToVisual(TabItems).TransformBounds(
+            new Windows.Foundation.Rect(0, 0, container.ActualWidth, container.ActualHeight));
+        double viewLeft = TabScroller.HorizontalOffset;
+        double viewRight = viewLeft + TabScroller.ViewportWidth;
+
+        if (bounds.Left < viewLeft)
         {
-            container.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = true });
+            TabScroller.ChangeView(bounds.Left, null, null);
+        }
+        else if (bounds.Right > viewRight)
+        {
+            TabScroller.ChangeView(bounds.Right - TabScroller.ViewportWidth, null, null);
         }
     }
 
@@ -285,13 +317,38 @@ public sealed partial class MainWindow : Window
     private void OpenSettings()
     {
         SettingsOverlay.Visibility = Visibility.Visible;
-        ThemeRadioButtons.Focus(FocusState.Programmatic);
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            CloseSettingsButton.Focus(FocusState.Programmatic);
+            UpdateDragRegion();
+        });
     }
 
     private void CloseSettings()
     {
         SettingsOverlay.Visibility = Visibility.Collapsed;
+        DispatcherQueue.TryEnqueue(UpdateDragRegion);
         Page?.FocusEditor();
+    }
+
+    private void SettingsHeader_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateDragRegion();
+
+    private void SetSettingsDragRegion(double scale)
+    {
+        if (SettingsHeader.ActualWidth == 0) return;
+
+        var header = SettingsHeader.TransformToVisual(null).TransformBounds(
+            new Windows.Foundation.Rect(0, 0, SettingsHeader.ActualWidth, SettingsHeader.ActualHeight));
+        var close = CloseSettingsButton.TransformToVisual(null).TransformBounds(
+            new Windows.Foundation.Rect(0, 0, CloseSettingsButton.ActualWidth, CloseSettingsButton.ActualHeight));
+
+        var caption = new RectInt32(
+            (int)(close.Right * scale),
+            (int)(header.Y * scale),
+            (int)((header.Right - close.Right) * scale),
+            (int)(header.Height * scale));
+        InputNonClientPointerSource.GetForWindowId(AppWindow.Id)
+            .SetRegionRects(NonClientRegionKind.Caption, new[] { caption });
     }
 
     private void MenuItem_RefocusEditor(object sender, RoutedEventArgs e)

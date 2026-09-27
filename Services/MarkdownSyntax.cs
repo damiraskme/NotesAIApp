@@ -2,6 +2,16 @@ using System.Text.RegularExpressions;
 
 namespace MyApp.Services;
 
+public enum MarkupKind
+{
+    Syntax,
+    Bold,
+    Italic,
+    Strikethrough,
+}
+
+public readonly record struct MarkupSpan(int Start, int Length, MarkupKind Kind);
+
 public static partial class MarkdownSyntax
 {
     [GeneratedRegex(@"^\s{0,3}(```|~~~)")]
@@ -22,21 +32,24 @@ public static partial class MarkdownSyntax
     [GeneratedRegex(@"(`+)(?!`)(.+?)(?<!`)\1(?!`)")]
     private static partial Regex InlineCode();
 
-    [GeneratedRegex(@"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")]
-    private static partial Regex Bold();
-
-    [GeneratedRegex(@"(~~)(?=\S)(.+?)(?<=\S)~~")]
-    private static partial Regex Strikethrough();
-
-    [GeneratedRegex(@"(?<![*_\w])([*_])(?![*_\s])(.+?)(?<![*_\s])\1(?![*_\w])")]
-    private static partial Regex Italic();
-
     [GeneratedRegex(@"!?\[([^\]]*)\]\(([^)]*)\)")]
     private static partial Regex Link();
 
-    public static List<(int Start, int Length)> FindMarkup(string text)
+    private sealed class DelimiterRun
     {
-        var spans = new List<(int Start, int Length)>();
+        public char Char;
+        public int Length;
+        public int Low;
+        public int High;
+        public bool CanOpen;
+        public bool CanClose;
+
+        public int Remaining => High - Low;
+    }
+
+    public static List<MarkupSpan> FindMarkup(string text)
+    {
+        var spans = new List<MarkupSpan>();
         bool inCodeBlock = false;
         int offset = 0;
 
@@ -44,7 +57,7 @@ public static partial class MarkdownSyntax
         {
             if (CodeFence().IsMatch(line))
             {
-                spans.Add((offset, line.Length));
+                spans.Add(new MarkupSpan(offset, line.Length, MarkupKind.Syntax));
                 inCodeBlock = !inCodeBlock;
             }
             else if (!inCodeBlock)
@@ -57,62 +70,144 @@ public static partial class MarkdownSyntax
         return spans;
     }
 
-    private static void FindLineMarkup(string line, int offset, List<(int Start, int Length)> spans)
+    private static void FindLineMarkup(string line, int offset, List<MarkupSpan> spans)
     {
         if (HorizontalRule().IsMatch(line))
         {
-            spans.Add((offset, line.Length));
+            spans.Add(new MarkupSpan(offset, line.Length, MarkupKind.Syntax));
             return;
         }
 
-        AddGroup(Heading().Match(line), 1, offset, spans);
-        AddGroup(Quote().Match(line), 1, offset, spans);
+        int contentStart = 0;
+        contentStart = Math.Max(contentStart, AddGroup(Heading().Match(line), 1, offset, spans));
+        contentStart = Math.Max(contentStart, AddGroup(Quote().Match(line), 1, offset, spans));
 
         Match list = ListItem().Match(line);
-        AddGroup(list, 1, offset, spans);
-        AddGroup(list, 2, offset, spans);
+        contentStart = Math.Max(contentStart, AddGroup(list, 1, offset, spans));
+        contentStart = Math.Max(contentStart, AddGroup(list, 2, offset, spans));
 
-        var codeRanges = new List<(int Start, int End)>();
+        var excluded = new List<(int Start, int End)>();
         foreach (Match code in InlineCode().Matches(line))
         {
-            codeRanges.Add((code.Index, code.Index + code.Length));
-            AddDelimiters(code, 1, offset, spans);
-        }
-
-        foreach (Regex emphasis in new[] { Bold(), Strikethrough(), Italic() })
-        {
-            foreach (Match match in emphasis.Matches(line))
-            {
-                if (!InsideCode(match, codeRanges)) AddDelimiters(match, 1, offset, spans);
-            }
+            excluded.Add((code.Index, code.Index + code.Length));
+            int ticks = code.Groups[1].Length;
+            spans.Add(new MarkupSpan(offset + code.Index, ticks, MarkupKind.Syntax));
+            spans.Add(new MarkupSpan(offset + code.Index + code.Length - ticks, ticks, MarkupKind.Syntax));
         }
 
         foreach (Match link in Link().Matches(line))
         {
-            if (InsideCode(link, codeRanges)) continue;
+            if (IsExcluded(link.Index, excluded)) continue;
 
             Group label = link.Groups[1];
-            spans.Add((offset + link.Index, label.Index - link.Index));
+            spans.Add(new MarkupSpan(offset + link.Index, label.Index - link.Index, MarkupKind.Syntax));
             int afterLabel = label.Index + label.Length;
-            spans.Add((offset + afterLabel, link.Index + link.Length - afterLabel));
+            spans.Add(new MarkupSpan(offset + afterLabel, link.Index + link.Length - afterLabel, MarkupKind.Syntax));
+            excluded.Add((afterLabel, link.Index + link.Length));
         }
+
+        FindEmphasis(line, offset, contentStart, excluded, spans);
     }
 
-    private static void AddGroup(Match match, int group, int offset, List<(int Start, int Length)> spans)
+    private static void FindEmphasis(string line, int offset, int contentStart, List<(int Start, int End)> excluded, List<MarkupSpan> spans)
     {
-        if (match.Success && match.Groups[group].Success && match.Groups[group].Length > 0)
+        var runs = new List<DelimiterRun>();
+        for (int i = contentStart; i < line.Length;)
         {
-            spans.Add((offset + match.Groups[group].Index, match.Groups[group].Length));
+            char c = line[i];
+            if (c is not ('*' or '_' or '~') || IsExcluded(i, excluded))
+            {
+                i++;
+                continue;
+            }
+
+            int start = i;
+            while (i < line.Length && line[i] == c) i++;
+            int length = i - start;
+
+            char before = start > 0 ? line[start - 1] : ' ';
+            char after = i < line.Length ? line[i] : ' ';
+            bool leftFlanking = !char.IsWhiteSpace(after)
+                && (!char.IsPunctuation(after) && !char.IsSymbol(after) || char.IsWhiteSpace(before) || char.IsPunctuation(before) || char.IsSymbol(before));
+            bool rightFlanking = !char.IsWhiteSpace(before)
+                && (!char.IsPunctuation(before) && !char.IsSymbol(before) || char.IsWhiteSpace(after) || char.IsPunctuation(after) || char.IsSymbol(after));
+
+            if (c == '~' && length > 2) continue;
+
+            runs.Add(new DelimiterRun
+            {
+                Char = c,
+                Length = length,
+                Low = start,
+                High = i,
+                CanOpen = c == '_' ? leftFlanking && (!rightFlanking || char.IsPunctuation(before)) : leftFlanking,
+                CanClose = c == '_' ? rightFlanking && (!leftFlanking || char.IsPunctuation(after)) : rightFlanking,
+            });
+        }
+
+        for (int closerIndex = 0; closerIndex < runs.Count; closerIndex++)
+        {
+            DelimiterRun closer = runs[closerIndex];
+            if (!closer.CanClose) continue;
+
+            while (closer.Remaining > 0)
+            {
+                int openerIndex = FindOpener(runs, closerIndex);
+                if (openerIndex < 0) break;
+
+                DelimiterRun opener = runs[openerIndex];
+                int use = closer.Char == '~'
+                    ? closer.Remaining
+                    : opener.Remaining >= 2 && closer.Remaining >= 2 ? 2 : 1;
+                MarkupKind kind = closer.Char == '~' ? MarkupKind.Strikethrough
+                    : use == 2 ? MarkupKind.Bold
+                    : MarkupKind.Italic;
+
+                spans.Add(new MarkupSpan(offset + opener.High - use, use, kind));
+                spans.Add(new MarkupSpan(offset + closer.Low, use, kind));
+                opener.High -= use;
+                closer.Low += use;
+
+                for (int between = openerIndex + 1; between < closerIndex; between++)
+                {
+                    runs[between].High = runs[between].Low;
+                }
+            }
         }
     }
 
-    private static void AddDelimiters(Match match, int group, int offset, List<(int Start, int Length)> spans)
+    private static int FindOpener(List<DelimiterRun> runs, int closerIndex)
     {
-        int length = match.Groups[group].Length;
-        spans.Add((offset + match.Index, length));
-        spans.Add((offset + match.Index + match.Length - length, length));
+        DelimiterRun closer = runs[closerIndex];
+        for (int i = closerIndex - 1; i >= 0; i--)
+        {
+            DelimiterRun opener = runs[i];
+            if (opener.Char != closer.Char || !opener.CanOpen || opener.Remaining == 0) continue;
+
+            if (closer.Char == '~')
+            {
+                if (opener.Remaining == closer.Remaining) return i;
+                continue;
+            }
+
+            bool bothSides = opener.CanClose || closer.CanOpen;
+            bool ruleOfThree = bothSides
+                && (opener.Length + closer.Length) % 3 == 0
+                && !(opener.Length % 3 == 0 && closer.Length % 3 == 0);
+            if (!ruleOfThree) return i;
+        }
+        return -1;
     }
 
-    private static bool InsideCode(Match match, List<(int Start, int End)> codeRanges) =>
-        codeRanges.Any(r => match.Index >= r.Start && match.Index < r.End);
+    private static int AddGroup(Match match, int group, int offset, List<MarkupSpan> spans)
+    {
+        if (!match.Success || !match.Groups[group].Success || match.Groups[group].Length == 0) return 0;
+
+        Group g = match.Groups[group];
+        spans.Add(new MarkupSpan(offset + g.Index, g.Length, MarkupKind.Syntax));
+        return g.Index + g.Length;
+    }
+
+    private static bool IsExcluded(int index, List<(int Start, int End)> excluded) =>
+        excluded.Any(r => index >= r.Start && index < r.End);
 }

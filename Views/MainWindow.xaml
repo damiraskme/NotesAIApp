@@ -15,7 +15,7 @@
             <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
         </Grid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="32" />
+            <RowDefinition Height="40" />
             <RowDefinition Height="32" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -38,6 +38,10 @@
                     <Setter Property="Visibility" Value="Collapsed"/>
                 </Style>
             </Grid.Resources>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
@@ -129,7 +133,7 @@
                     <FontIcon Glyph="&#xE76C;" FontSize="10"/>
                 </Button>
 
-                <Button Grid.Column="3" Width="26" Height="26" Padding="0" Margin="2,0,0,0"
+                <Button x:Name="NewTabButton" Grid.Column="3" Width="26" Height="26" Padding="0" Margin="2,0,0,0"
                         Background="Transparent" BorderThickness="0" CornerRadius="4"
                         VerticalAlignment="Center"
                         ToolTipService.ToolTip="New note (Ctrl+N)"
@@ -239,23 +243,37 @@
         <Frame x:Name="RootFrame" Grid.Row="2" />
 
         <Border Grid.Row="3" Background="{StaticResource NoteMenuBarBrush}" Padding="12,4">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="24">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="12">
                 <StackPanel.Resources>
                     <Style TargetType="TextBlock">
                         <Setter Property="FontSize" Value="12" />
                         <Setter Property="Opacity" Value="0.8" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
                         <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
+                    </Style>
+                    <Style TargetType="Rectangle">
+                        <Setter Property="Width" Value="1" />
+                        <Setter Property="Height" Value="12" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Fill" Value="{StaticResource NoteBorderBrush}" />
                     </Style>
                 </StackPanel.Resources>
                 <TextBlock Text="{x:Bind ViewModel.StatusPosition, Mode=OneWay}" />
+                <Rectangle />
                 <TextBlock Text="{x:Bind ViewModel.StatusCounts, Mode=OneWay}" />
+                <Rectangle />
                 <TextBlock Text="{x:Bind ViewModel.StatusFileType, Mode=OneWay}" />
+                <Rectangle />
                 <TextBlock Text="{x:Bind ViewModel.StatusZoom, Mode=OneWay}" />
             </StackPanel>
         </Border>
 
-        <Grid x:Name="SettingsOverlay" Grid.Row="2" Grid.RowSpan="2"
+        <Grid x:Name="SettingsOverlay" Grid.Row="0" Grid.RowSpan="4"
               Background="{StaticResource NoteBodyBrush}" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
             <Grid.Resources>
                 <Style x:Key="SettingsCardStyle" TargetType="Border">
                     <Setter Property="Background" Value="{StaticResource NoteMenuBrush}" />
@@ -270,19 +288,26 @@
                     <Setter Property="Foreground" Value="{StaticResource NoteTextBrush}" />
                 </Style>
             </Grid.Resources>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Padding="24,16,24,24" Spacing="8" MaxWidth="640">
-                    <Grid>
-                        <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{StaticResource NoteTextBrush}" VerticalAlignment="Center" />
-                        <Button HorizontalAlignment="Right" Width="36" Height="36" Padding="0"
-                                Background="Transparent" BorderThickness="0" CornerRadius="4"
-                                ToolTipService.ToolTip="Close (Esc)"
-                                Click="CloseSettings_Click">
-                            <FontIcon Glyph="&#xE711;" FontSize="13" />
-                        </Button>
-                    </Grid>
+            <Grid x:Name="SettingsHeader" Grid.Row="0" Background="{StaticResource NoteHeaderBrush}"
+                  SizeChanged="SettingsHeader_SizeChanged">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="CloseSettingsButton" Grid.Column="0"
+                        Width="46" VerticalAlignment="Stretch" Padding="0"
+                        Background="Transparent" BorderThickness="0" CornerRadius="0"
+                        AllowFocusOnInteraction="False"
+                        ToolTipService.ToolTip="Back (Esc)"
+                        Click="CloseSettings_Click">
+                    <FontIcon Glyph="&#xE72B;" FontSize="14" />
+                </Button>
+                <TextBlock Grid.Column="1" Text="Settings" Margin="6,0,0,0" FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource NoteTextBrush}" VerticalAlignment="Center" />
+            </Grid>
 
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="24,8,24,24" Spacing="8" MaxWidth="640">
                     <TextBlock Text="Editor" Style="{StaticResource SettingsSectionStyle}" />
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <Grid ColumnSpacing="12">

@@ -63,7 +63,10 @@ public sealed partial class MainPage : Page
         Loaded += MainPage_Loaded;
 
         ThemeTextBrush.RegisterPropertyChangedCallback(SolidColorBrush.ColorProperty, (s, dp) => OnThemeTextColorChanged());
-        MarkupBrush.RegisterPropertyChangedCallback(SolidColorBrush.ColorProperty, (s, dp) => RefreshMarkdownHighlight());
+        foreach (SolidColorBrush brush in MarkupBrushes.Values)
+        {
+            brush.RegisterPropertyChangedCallback(SolidColorBrush.ColorProperty, (s, dp) => RefreshMarkdownHighlight());
+        }
         _markdownTypingTimer.Tick += (s, e) =>
         {
             _markdownTypingTimer.Stop();
@@ -288,7 +291,13 @@ public sealed partial class MainPage : Page
 
     private static SolidColorBrush ThemeTextBrush => (SolidColorBrush)Application.Current.Resources["NoteTextBrush"];
 
-    private static SolidColorBrush MarkupBrush => (SolidColorBrush)Application.Current.Resources["NoteMarkupBrush"];
+    private static readonly Dictionary<MarkupKind, SolidColorBrush> MarkupBrushes = new()
+    {
+        [MarkupKind.Syntax] = (SolidColorBrush)Application.Current.Resources["NoteMarkupBrush"],
+        [MarkupKind.Bold] = (SolidColorBrush)Application.Current.Resources["NoteBoldMarkupBrush"],
+        [MarkupKind.Italic] = (SolidColorBrush)Application.Current.Resources["NoteItalicMarkupBrush"],
+        [MarkupKind.Strikethrough] = (SolidColorBrush)Application.Current.Resources["NoteStrikeMarkupBrush"],
+    };
 
     private string DocumentSnapshot(NoteTab tab)
     {
@@ -311,10 +320,9 @@ public sealed partial class MainPage : Page
         _isHighlighting = true;
         document.BatchDisplayUpdates();
         document.GetRange(0, text.Length).CharacterFormat.ForegroundColor = ThemeTextBrush.Color;
-        Windows.UI.Color markup = MarkupBrush.Color;
-        foreach (var (start, length) in MarkdownSyntax.FindMarkup(text))
+        foreach (MarkupSpan span in MarkdownSyntax.FindMarkup(text))
         {
-            document.GetRange(start, start + length).CharacterFormat.ForegroundColor = markup;
+            document.GetRange(span.Start, span.Start + span.Length).CharacterFormat.ForegroundColor = MarkupBrushes[span.Kind].Color;
         }
         document.ApplyDisplayUpdates();
         document.ClearUndoRedoHistory();

@@ -12,8 +12,12 @@
     <Color x:Key="NoteMenuColor">#FFF7D1</Color>
 
     <Color x:Key="NoteTextColor">#1F1F1F</Color>
-    <Color x:Key="NoteMarkupColor">#9C7F1F</Color>
     <Color x:Key="NoteBorderColor">#1F000000</Color>
+
+    <Color x:Key="NoteMarkupColor">#9C7F1F</Color>
+    <Color x:Key="NoteBoldMarkupColor">#B5541B</Color>
+    <Color x:Key="NoteItalicMarkupColor">#7B52A8</Color>
+    <Color x:Key="NoteStrikeMarkupColor">#A83232</Color>
 
     <Color x:Key="NoteAccentColor">#FFE66E</Color>
     <Color x:Key="NoteAccentHoverColor">#FFDD3D</Color>

@@ -14,6 +14,9 @@
     <SolidColorBrush x:Key="NoteMenuBrush" Color="{StaticResource NoteMenuColor}" />
     <SolidColorBrush x:Key="NoteTextBrush" Color="{StaticResource NoteTextColor}" />
     <SolidColorBrush x:Key="NoteMarkupBrush" Color="{StaticResource NoteMarkupColor}" />
+    <SolidColorBrush x:Key="NoteBoldMarkupBrush" Color="{StaticResource NoteBoldMarkupColor}" />
+    <SolidColorBrush x:Key="NoteItalicMarkupBrush" Color="{StaticResource NoteItalicMarkupColor}" />
+    <SolidColorBrush x:Key="NoteStrikeMarkupBrush" Color="{StaticResource NoteStrikeMarkupColor}" />
     <SolidColorBrush x:Key="NoteBorderBrush" Color="{StaticResource NoteBorderColor}" />
     <SolidColorBrush x:Key="NoteAccentBrush" Color="{StaticResource NoteAccentColor}" />
     <SolidColorBrush x:Key="NoteAccentHoverBrush" Color="{StaticResource NoteAccentHoverColor}" />
