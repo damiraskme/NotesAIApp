@@ -29,6 +29,59 @@ public sealed partial class MainWindow : Window
     public static MainWindow Current { get; private set; }
     public MainViewModel ViewModel { get; }
     private bool _closeConfirmed;
+
+    private const double SplitterWidth = 5;
+    private const double MinChatWidth = 240;
+    private const double MinNoteWidth = 280;
+    private bool _chatOpen;
+    private double _chatDragStartWidth;
+
+    private double Scale => RootGrid.XamlRoot?.RasterizationScale ?? 1.0;
+
+    private void UpdateChatPanel(bool resizeWindow)
+    {
+        bool open = ViewModel.Settings.Appearance.ShowChatPanel;
+        if (open == _chatOpen) return;
+
+        double panelWidth = open
+            ? Math.Max(MinChatWidth, ViewModel.Settings.Appearance.ChatPanelWidth)
+            : ChatColumn.ActualWidth;
+        double total = panelWidth + SplitterWidth;
+
+        _chatOpen = open;
+        SplitterColumn.Width = new GridLength(open ? SplitterWidth : 0);
+        ChatColumn.Width = new GridLength(open ? panelWidth : 0);
+        ChatSplitter.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        ChatPanelControl.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+
+        if (resizeWindow && AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Restored })
+        {
+            int delta = (int)Math.Round(total * Scale) * (open ? 1 : -1);
+            PointInt32 position = AppWindow.Position;
+            SizeInt32 size = AppWindow.Size;
+            int width = size.Width + delta;
+
+            RectInt32 work = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest).WorkArea;
+            width = Math.Min(width, work.Width);
+            int x = Math.Max(work.X, Math.Min(position.X, work.X + work.Width - width));
+            AppWindow.MoveAndResize(new RectInt32(x, position.Y, width, size.Height));
+        }
+
+        if (open) ChatPanelControl.FocusPrompt();
+        else Page?.FocusEditor();
+    }
+
+
+    private void ChatSplitter_DragStarted(object? sender, EventArgs e) => _chatDragStartWidth = ChatColumn.ActualWidth;
+
+    private void ChatSplitter_DragDelta(object? sender, double delta)
+    {
+        double max = Math.Max(MinChatWidth, ContentArea.ActualWidth - MinNoteWidth - SplitterWidth);
+        ChatColumn.Width = new GridLength(Math.Clamp(_chatDragStartWidth - delta, MinChatWidth, max));
+    }
+
+    private void ChatSplitter_DragCompleted(object? sender, EventArgs e) =>
+        ViewModel.Settings.Appearance.ChatPanelWidth = Math.Round(ChatColumn.ActualWidth);
     public MainWindow()
     {
         Current = this;
@@ -46,6 +99,16 @@ public sealed partial class MainWindow : Window
         BuildThemeSettings();
         BuildRecentMenu();
         BuildNewMenus();
+
+        ViewModel.Settings.Appearance.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(Models.Settings.AppearanceSettings.ShowChatPanel)) UpdateChatPanel(resizeWindow: true);
+        };
+        RootGrid.Loaded += (s, e) => UpdateChatPanel(resizeWindow: true);
+        ChatPanelControl.CloseRequested += (s, e) => ViewModel.Settings.Appearance.ShowChatPanel = false;
+        ChatSplitter.DragStarted += ChatSplitter_DragStarted;
+        ChatSplitter.DragDelta += ChatSplitter_DragDelta;
+        ChatSplitter.DragCompleted += ChatSplitter_DragCompleted;
         ViewModel.Storage.State.Session.PropertyChanged += Session_PropertyChanged;
         RootGrid.PreviewKeyDown += RootGrid_PreviewKeyDown;
 

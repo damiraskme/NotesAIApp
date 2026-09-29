@@ -15,11 +15,10 @@ namespace MyApp.ViewModels
 
         public AppSettings Settings => Storage.Settings;
 
-        [ObservableProperty]
-        public partial bool IsAlwaysOnTop { get; set; } = false;
+        public ChatViewModel Chat { get; } = new();
 
         [ObservableProperty]
-        public partial bool IsPythonBusy { get; set; } = false;
+        public partial bool IsAlwaysOnTop { get; set; } = false;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CanClearFormatting))]
@@ -59,6 +58,7 @@ namespace MyApp.ViewModels
         {
             if (oldValue is not null) oldValue.IsActive = false;
             if (newValue is not null) newValue.IsActive = true;
+            Chat.SetNote(newValue);
         }
 
         public MainViewModel()

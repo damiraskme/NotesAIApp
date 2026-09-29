@@ -178,6 +178,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <MenuBar Grid.Column="0" VerticalAlignment="Center">
                 <MenuBarItem x:Name="FileMenu" Title="File" AllowFocusOnInteraction="False">
@@ -220,6 +221,9 @@
                 </MenuBarItem>
 
                 <MenuBarItem Title="View" AllowFocusOnInteraction="False">
+                    <ToggleMenuFlyoutItem Text="AI chat" Click="MenuItem_RefocusEditor"
+                                          IsChecked="{x:Bind ViewModel.Settings.Appearance.ShowChatPanel, Mode=TwoWay}" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutSubItem Text="Zoom">
                         <MenuFlyoutItem Text="Zoom in" Click="ZoomIn_Click" KeyboardAcceleratorTextOverride="Ctrl+Plus" />
                         <MenuFlyoutItem Text="Zoom out" Click="ZoomOut_Click" KeyboardAcceleratorTextOverride="Ctrl+Minus" />
@@ -228,9 +232,17 @@
                 </MenuBarItem>
             </MenuBar>
 
-            <local:FormattingToolbar x:Name="FormattingToolbarControl" Grid.Column="1" Margin="0,0,4,0" />
+            <ToggleButton x:Name="ChatToggleButton" Grid.Column="1"
+                          Style="{StaticResource NoteBoxButtonStyle}"
+                          Width="32" Height="28" Margin="0,0,2,0"
+                          ToolTipService.ToolTip="AI chat"
+                          IsChecked="{x:Bind ViewModel.Settings.Appearance.ShowChatPanel, Mode=TwoWay}">
+                <FontIcon Glyph="&#xE8BD;" FontSize="13" />
+            </ToggleButton>
 
-            <Button x:Name="SettingsButton" Grid.Column="2"
+            <local:FormattingToolbar x:Name="FormattingToolbarControl" Grid.Column="2" Margin="0,0,4,0" />
+
+            <Button x:Name="SettingsButton" Grid.Column="3"
                     Width="40" Height="32" Padding="0"
                     Background="Transparent" BorderThickness="0" CornerRadius="0"
                     AllowFocusOnInteraction="False"
@@ -240,7 +252,17 @@
             </Button>
         </Grid>
 
-        <Frame x:Name="RootFrame" Grid.Row="2" />
+        <Grid x:Name="ContentArea" Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="200" />
+                <ColumnDefinition x:Name="SplitterColumn" Width="0" />
+                <ColumnDefinition x:Name="ChatColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <Frame x:Name="RootFrame" Grid.Column="0" />
+            <local:PanelSplitter x:Name="ChatSplitter" Grid.Column="1" Visibility="Collapsed" />
+            <local:ChatPanel x:Name="ChatPanelControl" Grid.Column="2" Visibility="Collapsed" />
+        </Grid>
 
         <Border Grid.Row="3" Background="{StaticResource NoteMenuBarBrush}" Padding="12,4">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="12">

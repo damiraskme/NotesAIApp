@@ -7,5 +7,11 @@ namespace MyApp.Models.Settings
     {
         [ObservableProperty]
         public partial string Theme { get; set; } = ThemeService.DefaultTheme;
+
+        [ObservableProperty]
+        public partial bool ShowChatPanel { get; set; }
+
+        [ObservableProperty]
+        public partial double ChatPanelWidth { get; set; } = 340;
     }
 }

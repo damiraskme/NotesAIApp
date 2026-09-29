@@ -27,10 +27,9 @@
         </Style>
     </Page.Resources>
 
-    <Grid Padding="12,4,12,8">
+    <Grid Padding="12,4,12,4">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -121,53 +120,5 @@
                  Margin="0,4,0,4"
                  IsOpen="False"
                  IsClosable="True" />
-
-        <Grid Grid.Row="2" ColumnSpacing="8" Margin="0,4,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <TextBox x:Name="PromptBox"
-                     PlaceholderText="Send to Python..."
-                     VerticalAlignment="Center"
-                     CornerRadius="16"
-                     Padding="12,6,12,6"
-                     KeyDown="PromptBox_KeyDown">
-                <TextBox.Resources>
-                    <StaticResource x:Key="TextControlBackground" ResourceKey="NoteMenuBrush" />
-                    <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="NoteMenuBrush" />
-                    <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="NoteMenuBrush" />
-                    <StaticResource x:Key="TextControlBorderBrush" ResourceKey="NoteBorderBrush" />
-                    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="NoteBorderBrush" />
-                    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="NoteAccentBrush" />
-                    <StaticResource x:Key="TextControlForeground" ResourceKey="NoteTextBrush" />
-                    <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="NoteTextBrush" />
-                    <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="NoteTextBrush" />
-                </TextBox.Resources>
-            </TextBox>
-
-            <Button x:Name="PythonButton" Grid.Column="1"
-                    Width="36" Height="36" Padding="0"
-                    CornerRadius="18"
-                    BorderThickness="0"
-                    AllowFocusOnInteraction="False"
-                    Background="{StaticResource NoteAccentBrush}"
-                    Foreground="{StaticResource NoteAccentTextBrush}"
-                    ToolTipService.ToolTip="Send to Python (Enter)"
-                    Click="PythonButton_Click">
-                <Button.Resources>
-                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteAccentHoverBrush" />
-                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NoteAccentHoverBrush" />
-                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="NoteAccentTextBrush" />
-                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="NoteAccentTextBrush" />
-                </Button.Resources>
-                <Grid>
-                    <FontIcon x:Name="PythonIcon" Glyph="&#xE724;" FontSize="14" />
-                    <ProgressRing x:Name="PythonProgress" Width="16" Height="16"
-                                  IsActive="False" Visibility="Collapsed" />
-                </Grid>
-            </Button>
-        </Grid>
     </Grid>
 </Page>

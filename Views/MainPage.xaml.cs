@@ -1451,51 +1451,6 @@ public sealed partial class MainPage : Page
         e.Handled = true;
     }
 
-    private async void PythonButton_Click(object sender, RoutedEventArgs e) => await SendPromptAsync();
-
-    private async void PromptBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Enter) return;
-        e.Handled = true;
-        await SendPromptAsync();
-    }
-
-    private async Task SendPromptAsync()
-    {
-        string prompt = PromptBox.Text.Trim();
-        if (ViewModel.IsPythonBusy || prompt.Length == 0) return;
-        SetPythonBusy(true);
-
-        try
-        {
-            PythonResult result = await PythonService.RunAsync("process", prompt);
-
-            if (result.Error is not null)
-            {
-                ShowInfo(InfoBarSeverity.Error, result.Error);
-                return;
-            }
-
-            PromptBox.Text = string.Empty;
-            string? reply = string.Join(Environment.NewLine,
-                new[] { result.Text, result.Message }.Where(r => !string.IsNullOrEmpty(r)));
-            if (!string.IsNullOrEmpty(reply)) ShowInfo(InfoBarSeverity.Informational, reply);
-        }
-        finally
-        {
-            SetPythonBusy(false);
-        }
-    }
-
-    private void SetPythonBusy(bool busy)
-    {
-        ViewModel.IsPythonBusy = busy;
-        PythonButton.IsEnabled = !busy;
-        PythonIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
-        PythonProgress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
-        PythonProgress.IsActive = busy;
-    }
-
     private void ShowInfo(InfoBarSeverity severity, string message)
     {
         PythonInfoBar.Severity = severity;

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="MyApp.ChatPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:MyApp.ViewModels">
+
+    <UserControl.Resources>
+        <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteHoverTintBrush" />
+        <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NotePressedTintBrush" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource NoteBodyBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Padding="8,0,4,0" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ComboBox x:Name="ProviderBox" Grid.Column="0"
+                      MinWidth="150" VerticalAlignment="Center"
+                      ToolTipService.ToolTip="AI to chat with"
+                      SelectionChanged="ProviderBox_SelectionChanged" />
+
+            <ProgressRing Grid.Column="1" Width="16" Height="16"
+                          IsActive="{x:Bind Chat.IsBusy, Mode=OneWay}" />
+
+            <Button Grid.Column="2" Width="32" Height="32" Padding="0"
+                    Background="Transparent" BorderThickness="0" CornerRadius="4"
+                    Foreground="{StaticResource NoteTextBrush}"
+                    x:Name="CloseChatButton"
+                    AutomationProperties.Name="Close AI chat"
+                    ToolTipService.ToolTip="Close AI chat"
+                    Click="Close_Click">
+                <FontIcon Glyph="&#xE711;" FontSize="12" />
+            </Button>
+        </Grid>
+
+        <ScrollViewer x:Name="MessagesScroller" Grid.Row="1"
+                      Padding="12,4" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{x:Bind Chat.Messages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ChatMessageItem">
+                        <Border HorizontalAlignment="{x:Bind Alignment}"
+                                Margin="0,4" Padding="10,6"
+                                CornerRadius="8" Background="{x:Bind Bubble}">
+                            <TextBlock Text="{x:Bind Text}" TextWrapping="Wrap"
+                                       IsTextSelectionEnabled="True"
+                                       Foreground="{x:Bind Foreground}" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="1" Margin="24"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   TextAlignment="Center" TextWrapping="Wrap" Opacity="0.6"
+                   Foreground="{StaticResource NoteTextBrush}"
+                   Visibility="{x:Bind Chat.HasNoMessages, Mode=OneWay}"
+                   Text="No messages for this note yet." />
+
+        <Grid Grid.Row="2" Padding="12,4,12,8" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="PromptBox"
+                     PlaceholderText="Message AI..."
+                     VerticalAlignment="Center"
+                     CornerRadius="16"
+                     Padding="12,6,12,6"
+                     KeyDown="PromptBox_KeyDown">
+                <TextBox.Resources>
+                    <StaticResource x:Key="TextControlBackground" ResourceKey="NoteMenuBrush" />
+                    <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="NoteMenuBrush" />
+                    <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="NoteMenuBrush" />
+                    <StaticResource x:Key="TextControlBorderBrush" ResourceKey="NoteBorderBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="NoteBorderBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="NoteAccentBrush" />
+                    <StaticResource x:Key="TextControlForeground" ResourceKey="NoteTextBrush" />
+                    <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="NoteTextBrush" />
+                    <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="NoteTextBrush" />
+                </TextBox.Resources>
+            </TextBox>
+
+            <Button x:Name="SendButton" Grid.Column="1"
+                    Width="36" Height="36" Padding="0"
+                    CornerRadius="18" BorderThickness="0"
+                    Background="{StaticResource NoteAccentBrush}"
+                    Foreground="{StaticResource NoteAccentTextBrush}"
+                    ToolTipService.ToolTip="Send (Enter)"
+                    Click="Send_Click">
+                <Button.Resources>
+                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="NoteAccentHoverBrush" />
+                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="NoteAccentHoverBrush" />
+                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="NoteAccentTextBrush" />
+                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="NoteAccentTextBrush" />
+                </Button.Resources>
+                <FontIcon Glyph="&#xE724;" FontSize="14" />
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>
