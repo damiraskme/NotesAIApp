@@ -14,6 +14,9 @@ using Microsoft.Windows.Storage.Pickers;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using Windows.Storage.Streams;
 
 namespace MyApp;
 
@@ -24,6 +27,7 @@ public sealed partial class MainPage : Page
     public MainViewModel ViewModel { get; }
 
     private readonly DispatcherTimer _autoSaveTimer;
+    private readonly DispatcherTimer _dirtyCheckTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private bool _isLoadingNote;
 
     private MarkerType _listType = MarkerType.Bullet;
@@ -58,6 +62,15 @@ public sealed partial class MainPage : Page
 
         _autoSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Editor.AutoSaveDelaySeconds) };
         _autoSaveTimer.Tick += AutoSaveTimer_Tick;
+        _dirtyCheckTimer.Tick += (s, e) =>
+        {
+            _dirtyCheckTimer.Stop();
+            UpdateDirtyState();
+            if (!Editor.AutoSave || ActiveTab?.IsDirty != true) return;
+
+            _autoSaveTimer.Stop();
+            _autoSaveTimer.Start();
+        };
 
         Editor.PropertyChanged += EditorSettings_PropertyChanged;
         Loaded += MainPage_Loaded;
@@ -135,12 +148,8 @@ public sealed partial class MainPage : Page
         if (_mode == EditorMode.Markdown) OnMarkdownTextChanged();
 
         UpdateToolbarState();
-        UpdateDirtyState();
-
-        if (!Editor.AutoSave || ActiveTab?.IsDirty != true) return;
-
-        _autoSaveTimer.Stop();
-        _autoSaveTimer.Start();
+        _dirtyCheckTimer.Stop();
+        _dirtyCheckTimer.Start();
     }
 
     private void AutoSaveTimer_Tick(object? sender, object e)
@@ -179,7 +188,7 @@ public sealed partial class MainPage : Page
         FocusEditor();
     }
 
-    public void NewTab(string extension = ".rtf")
+    public void NewTab(string extension = TextPackService.Extension)
     {
         var tab = new NoteTab { DefaultExtension = extension };
         ViewModel.Tabs.Add(tab);
@@ -255,6 +264,42 @@ public sealed partial class MainPage : Page
         return true;
     }
 
+    private void LoadTextPack(NoteTab tab)
+    {
+        try
+        {
+            TextPackContent content = TextPackService.Load(tab.FilePath!);
+            double maxWidth = Math.Max(48, NoteTextBox.ActualWidth - NoteTextBox.Padding.Left - NoteTextBox.Padding.Right - 24);
+            tab.KnownAssets = RichTextMarkdown.Load(NoteTextBox.Document, content.Markdown, content.Assets, maxWidth, XamlRoot?.RasterizationScale ?? 1.0);
+            tab.OriginalAssets = content.Assets;
+        }
+        catch (Exception ex)
+        {
+            NoteTextBox.Document.SetText(TextSetOptions.None, string.Empty);
+            ShowInfo(InfoBarSeverity.Error, $"Could not open {Path.GetFileName(tab.FilePath)}: {ex.Message}");
+        }
+        if (StoryLength() <= 1) ResetFormatting();
+    }
+
+    private bool WriteTextPack(NoteTab tab, string path)
+    {
+        try
+        {
+            TextPackContent content = RichTextMarkdown.Save(NoteTextBox.Document, tab.KnownAssets, tab.OriginalAssets);
+            TextPackService.Save(path, content);
+            tab.OriginalAssets = content.Assets;
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(InfoBarSeverity.Error, $"Could not save {path}: {ex.Message}");
+            return false;
+        }
+
+        tab.SavedSnapshot = DocumentSnapshot(tab);
+        tab.IsDirty = false;
+        return true;
+    }
+
     private void LoadActiveTab()
     {
         if (ActiveTab is not NoteTab tab) return;
@@ -262,7 +307,12 @@ public sealed partial class MainPage : Page
         _isLoadingNote = true;
         ApplyEditorMode(tab.Mode);
         bool isClean;
-        if (tab.Rtf is null)
+        if (tab.Rtf is null && tab.IsTextPack && tab.FilePath is not null && File.Exists(tab.FilePath))
+        {
+            LoadTextPack(tab);
+            isClean = true;
+        }
+        else if (tab.Rtf is null)
         {
             string content = ViewModel.LoadNote(tab.FilePath) ?? string.Empty;
             NoteTextBox.Document.SetText(tab.IsPlainTextFile ? TextSetOptions.None : TextSetOptions.FormatRtf, content);
@@ -280,6 +330,7 @@ public sealed partial class MainPage : Page
         {
             tab.SavedSnapshot = DocumentSnapshot(tab);
         }
+        if (tab.IsTextPack) ViewModel.StatusFileType = "Note";
         ResetMarkdownHistory();
         NoteTextBox.Document.ClearUndoRedoHistory();
         NoteTextBox.Document.Selection.SetRange(tab.SelectionStart, tab.SelectionEnd);
@@ -490,9 +541,10 @@ public sealed partial class MainPage : Page
         if (result is null) return false;
 
         EditorMode previousMode = tab.Mode;
+        bool wasTextPack = tab.IsTextPack;
         tab.FilePath = result.Path;
         bool saved = WriteActiveTab();
-        if (saved && tab.Mode != previousMode)
+        if (saved && (tab.Mode != previousMode || tab.IsTextPack != wasTextPack))
         {
             tab.Rtf = null;
             LoadActiveTab();
@@ -508,6 +560,7 @@ public sealed partial class MainPage : Page
         {
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
         };
+        picker.FileTypeFilter.Add(TextPackService.Extension);
         picker.FileTypeFilter.Add(".rtf");
         picker.FileTypeFilter.Add(".txt");
         picker.FileTypeFilter.Add(".md");
@@ -579,6 +632,7 @@ public sealed partial class MainPage : Page
 
     private static readonly (string Name, string Extension)[] SaveFileTypes =
     {
+        ("Note (TextPack)", TextPackService.Extension),
         ("Rich Text", ".rtf"),
         ("Plain Text", ".txt"),
         ("Markdown", ".md"),
@@ -657,6 +711,8 @@ public sealed partial class MainPage : Page
     private bool WriteActiveTab()
     {
         if (ActiveTab is not { FilePath: string path } tab) return false;
+
+        if (tab.IsTextPack) return WriteTextPack(tab, path);
 
         string content;
         if (tab.IsPlainTextFile)
@@ -939,22 +995,98 @@ public sealed partial class MainPage : Page
 
     public async void Paste()
     {
-        if (_mode == EditorMode.RichText) NoteTextBox.Document.Selection.Paste(0);
-        else await PastePlainTextAsync();
+        await PasteAsync(Clipboard.GetContent());
         FocusEditor();
     }
 
     private async void NoteTextBox_Paste(object sender, TextControlPasteEventArgs e)
     {
-        if (_mode == EditorMode.RichText) return;
+        DataPackageView content = Clipboard.GetContent();
+        bool mayHoldImage = content.Contains(StandardDataFormats.Bitmap) || content.Contains(StandardDataFormats.StorageItems);
+        if (_mode == EditorMode.RichText && !mayHoldImage) return;
 
         e.Handled = true;
-        await PastePlainTextAsync();
+        await PasteAsync(content);
     }
 
-    private async Task PastePlainTextAsync()
+    private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tif", ".tiff" };
+
+    private async Task PasteAsync(DataPackageView content)
     {
-        DataPackageView content = Clipboard.GetContent();
+        var images = new List<IRandomAccessStreamReference>();
+        if (content.Contains(StandardDataFormats.Bitmap))
+        {
+            images.Add(await content.GetBitmapAsync());
+        }
+        else if (content.Contains(StandardDataFormats.StorageItems))
+        {
+            foreach (IStorageItem item in await content.GetStorageItemsAsync())
+            {
+                if (item is StorageFile file && ImageExtensions.Contains(file.FileType.ToLowerInvariant()))
+                {
+                    images.Add(RandomAccessStreamReference.CreateFromFile(file));
+                }
+            }
+        }
+
+        if (images.Count > 0)
+        {
+            if (_mode != EditorMode.RichText)
+            {
+                ShowInfo(InfoBarSeverity.Informational, "Images can only be pasted into rich text (.rtf) notes.");
+                return;
+            }
+
+            foreach (IRandomAccessStreamReference image in images)
+            {
+                await InsertImageAsync(image);
+            }
+            return;
+        }
+
+        if (_mode == EditorMode.RichText) NoteTextBox.Document.Selection.Paste(0);
+        else await PastePlainTextAsync(content);
+    }
+
+    private async Task InsertImageAsync(IRandomAccessStreamReference image)
+    {
+        try
+        {
+            using IRandomAccessStreamWithContentType stream = await image.OpenReadAsync();
+            BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+
+            double scale = XamlRoot?.RasterizationScale ?? 1.0;
+            double width = decoder.OrientedPixelWidth / scale;
+            double height = decoder.OrientedPixelHeight / scale;
+            double maxWidth = Math.Max(48, NoteTextBox.ActualWidth - NoteTextBox.Padding.Left - NoteTextBox.Padding.Right - 24);
+            if (width > maxWidth)
+            {
+                height *= maxWidth / width;
+                width = maxWidth;
+            }
+
+            using SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+            using var png = new InMemoryRandomAccessStream();
+            BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, png);
+            encoder.SetSoftwareBitmap(bitmap);
+            await encoder.FlushAsync();
+            png.Seek(0);
+
+            var selection = NoteTextBox.Document.Selection;
+            int position = selection.StartPosition;
+            selection.InsertImage(
+                (int)Math.Round(width), (int)Math.Round(height), 0,
+                VerticalCharacterAlignment.Baseline, "Pasted image", png);
+            selection.SetRange(position + 1, position + 1);
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(InfoBarSeverity.Error, $"Could not paste the image: {ex.Message}");
+        }
+    }
+
+    private async Task PastePlainTextAsync(DataPackageView content)
+    {
         if (!content.Contains(StandardDataFormats.Text)) return;
 
         string text = await content.GetTextAsync();

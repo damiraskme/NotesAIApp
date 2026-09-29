@@ -372,9 +372,10 @@ public sealed partial class MainWindow : Window
 
     private static readonly (string Text, string Extension, string Shortcut)[] NewTabTypes =
     {
-        ("Plain text (.txt)", ".txt", "Ctrl+1"),
-        ("Markdown (.md)", ".md", "Ctrl+2"),
-        ("Rich text (.rtf)", ".rtf", "Ctrl+3"),
+        ("Note (.textpack)", TextPackService.Extension, "Ctrl+1"),
+        ("Plain text (.txt)", ".txt", "Ctrl+2"),
+        ("Markdown (.md)", ".md", "Ctrl+3"),
+        ("Rich text (.rtf)", ".rtf", "Ctrl+4"),
     };
 
     private readonly MenuFlyout _newFlyout = new();
@@ -423,6 +424,7 @@ public sealed partial class MainWindow : Window
         VirtualKey.Number1 or VirtualKey.NumberPad1 => NewTabTypes[0].Extension,
         VirtualKey.Number2 or VirtualKey.NumberPad2 => NewTabTypes[1].Extension,
         VirtualKey.Number3 or VirtualKey.NumberPad3 => NewTabTypes[2].Extension,
+        VirtualKey.Number4 or VirtualKey.NumberPad4 => NewTabTypes[3].Extension,
         _ => null,
     };
 

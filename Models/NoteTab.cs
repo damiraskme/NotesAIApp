@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using MyApp.Services;
 
 namespace MyApp.Models
 {
@@ -21,12 +22,16 @@ namespace MyApp.Models
 
         public string SavedSnapshot { get; set; } = "";
 
-        public string DefaultExtension { get; init; } = ".rtf";
+        public string DefaultExtension { get; init; } = TextPackService.Extension;
+
+        public IReadOnlyDictionary<string, string> KnownAssets { get; set; } = new Dictionary<string, string>();
+
+        public IReadOnlyDictionary<string, byte[]> OriginalAssets { get; set; } = new Dictionary<string, byte[]>();
 
         public string Extension => FilePath is null ? DefaultExtension : Path.GetExtension(FilePath).ToLowerInvariant();
 
         public string Title => FilePath is null
-            ? (DefaultExtension == ".rtf" ? "Untitled" : "Untitled" + DefaultExtension)
+            ? (DefaultExtension == TextPackService.Extension ? "Untitled" : "Untitled" + DefaultExtension)
             : Path.GetFileNameWithoutExtension(FilePath);
 
         public EditorMode Mode => Extension switch
@@ -37,5 +42,7 @@ namespace MyApp.Models
         };
 
         public bool IsPlainTextFile => Mode != EditorMode.RichText;
+
+        public bool IsTextPack => Extension == TextPackService.Extension;
     }
 }
