@@ -940,11 +940,81 @@ public sealed partial class MainPage : Page
 
     private static bool IsList(MarkerType type) => type is not (MarkerType.None or MarkerType.Undefined);
 
+    public bool TryChangeListLevel(int delta)
+    {
+        if (_mode != EditorMode.RichText) return false;
+
+        var document = NoteTextBox.Document;
+        var selection = document.Selection;
+        if (!IsList(document.GetRange(selection.StartPosition, selection.StartPosition).ParagraphFormat.ListType)) return false;
+
+        float step = RichTextMarkdown.ListIndentStep;
+        float minIndent = ListGroupMinIndent(selection.StartPosition);
+        int end = Math.Max(selection.StartPosition, selection.EndPosition);
+        int position = selection.StartPosition;
+        while (true)
+        {
+            ITextRange paragraph = document.GetRange(position, position);
+            paragraph.Expand(TextRangeUnit.Paragraph);
+            ITextParagraphFormat format = paragraph.ParagraphFormat;
+            if (IsList(format.ListType))
+            {
+                float left = format.LeftIndent + delta * step;
+                if (left >= minIndent - 0.5f && left <= minIndent + 8 * step + 0.5f)
+                {
+                    format.SetIndents(format.FirstLineIndent, left, format.RightIndent);
+                }
+            }
+
+            if (paragraph.EndPosition >= end || paragraph.EndPosition <= position) break;
+            position = paragraph.EndPosition;
+        }
+
+        AfterFormatting();
+        return true;
+    }
+
+    private float ListGroupMinIndent(int position)
+    {
+        var document = NoteTextBox.Document;
+        float min = float.MaxValue;
+
+        ITextRange current = document.GetRange(position, position);
+        current.Expand(TextRangeUnit.Paragraph);
+
+        int up = current.StartPosition;
+        while (true)
+        {
+            ITextRange paragraph = document.GetRange(up, up);
+            paragraph.Expand(TextRangeUnit.Paragraph);
+            ITextParagraphFormat format = paragraph.ParagraphFormat;
+            if (!IsList(format.ListType)) break;
+            min = Math.Min(min, format.LeftIndent);
+            if (paragraph.StartPosition == 0) break;
+            up = paragraph.StartPosition - 1;
+        }
+
+        int length = StoryLength();
+        int down = current.EndPosition;
+        while (down < length)
+        {
+            ITextRange paragraph = document.GetRange(down, down);
+            paragraph.Expand(TextRangeUnit.Paragraph);
+            ITextParagraphFormat format = paragraph.ParagraphFormat;
+            if (!IsList(format.ListType)) break;
+            min = Math.Min(min, format.LeftIndent);
+            if (paragraph.EndPosition <= down) break;
+            down = paragraph.EndPosition;
+        }
+
+        return min == float.MaxValue ? 0 : min;
+    }
+
     private static readonly System.Text.RegularExpressions.Regex WordPattern = new(@"\S+");
 
     private void UpdateStatus()
     {
-        string text = PlainText();
+        string text = RichTextMarkdown.StripTags(PlainText());
         if (text.EndsWith('\r')) text = text[..^1];
 
         int caret = Math.Min(NoteTextBox.Document.Selection.EndPosition, text.Length);

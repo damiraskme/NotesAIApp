@@ -561,6 +561,14 @@ public sealed partial class MainWindow : Window
         bool ctrl = IsDown(VirtualKey.Control);
         bool shift = IsDown(VirtualKey.Shift);
         bool alt = IsDown(VirtualKey.Menu);
+
+        if (e.Key == VirtualKey.Tab && !ctrl && !alt
+            && FocusManager.GetFocusedElement(Content.XamlRoot) is RichEditBox
+            && page.TryChangeListLevel(shift ? -1 : 1))
+        {
+            e.Handled = true;
+            return;
+        }
         VirtualKey key = e.Key;
 
         bool inTextBox = FocusManager.GetFocusedElement(Content.XamlRoot) is TextBox;

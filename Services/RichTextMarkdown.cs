@@ -14,9 +14,13 @@ public static partial class RichTextMarkdown
     private const char ObjectChar = '￼';
     private const string RuleText = "———";
     private static readonly float[] HeadingScale = { 1.6f, 1.35f, 1.15f, 1.05f, 1.0f, 1.0f };
+    public const float ListIndentStep = 18f;
+    private const char TagOpen = '\uE000';
+    private const char TagClose = '\uE001';
 
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseEmphasisExtras()
+        .UsePipeTables()
         .UsePreciseSourceLocation()
         .Build();
 
@@ -31,9 +35,14 @@ public static partial class RichTextMarkdown
         Code = 16,
     }
 
-    private enum Kind { Normal, Heading, Bullet, Number, Quote, Code, Rule }
+    private enum Kind { Normal, Heading, Bullet, Number, Quote, Code, Rule, Raw }
 
-    private readonly record struct Paragraph(int Start, int Length, Kind Kind, int Level);
+    private readonly record struct Paragraph(int Start, int Length, Kind Kind, int Level, int Number);
+
+    private sealed record LineInfo(int Start, string Line, string Visible, List<string> Tags, MarkerType ListType, float LeftIndent, int ListStart)
+    {
+        public bool IsList => ListType is not (MarkerType.None or MarkerType.Undefined);
+    }
 
     private readonly record struct Span(int Start, int Length, Style Style, string? Link);
 
@@ -48,6 +57,11 @@ public static partial class RichTextMarkdown
     [GeneratedRegex(@"wzDescription\}\{\\sv ([^}]*)\}")]
     private static partial Regex PictureDescription();
 
+    [GeneratedRegex("\uE000([^\uE001]*)\uE001")]
+    private static partial Regex TagPattern();
+
+    public static string StripTags(string text) => TagPattern().Replace(text, string.Empty);
+
     public static IReadOnlyDictionary<string, string> Load(
         RichEditTextDocument document, string markdown, IReadOnlyDictionary<string, byte[]> assets, double maxImageWidth, double scale)
     {
@@ -56,6 +70,11 @@ public static partial class RichTextMarkdown
 
         document.SetText(TextSetOptions.None, builder.Text.ToString());
         float baseSize = document.GetDefaultCharacterFormat().Size;
+
+        foreach (var (hiddenStart, hiddenLength) in builder.HiddenRanges)
+        {
+            document.GetRange(hiddenStart, hiddenStart + hiddenLength).CharacterFormat.Hidden = FormatEffect.On;
+        }
 
         foreach (Paragraph paragraph in builder.Paragraphs)
         {
@@ -69,12 +88,11 @@ public static partial class RichTextMarkdown
                 case Kind.Bullet:
                     range.ParagraphFormat.ListType = MarkerType.Bullet;
                     break;
-                case Kind.Number:
-                    break;
                 case Kind.Quote:
                     range.ParagraphFormat.SetIndents(0, 18, 0);
                     break;
                 case Kind.Code:
+                case Kind.Raw:
                     range.CharacterFormat.Name = CodeFont;
                     break;
             }
@@ -85,13 +103,22 @@ public static partial class RichTextMarkdown
             if (builder.Paragraphs[i].Kind != Kind.Number) continue;
 
             int first = i;
-            while (i + 1 < builder.Paragraphs.Count && builder.Paragraphs[i + 1].Kind == Kind.Number) i++;
+            int level = builder.Paragraphs[i].Level;
+            while (i + 1 < builder.Paragraphs.Count && builder.Paragraphs[i + 1].Kind == Kind.Number && builder.Paragraphs[i + 1].Level == level) i++;
             Paragraph last = builder.Paragraphs[i];
 
             ITextRange list = document.GetRange(builder.Paragraphs[first].Start, last.Start + last.Length);
             list.ParagraphFormat.ListType = MarkerType.Arabic;
             list.ParagraphFormat.ListStyle = MarkerStyle.Period;
-            list.ParagraphFormat.ListStart = 1;
+            list.ParagraphFormat.ListStart = Math.Max(1, builder.Paragraphs[first].Number);
+        }
+
+        foreach (Paragraph paragraph in builder.Paragraphs)
+        {
+            if (paragraph.Kind is not (Kind.Bullet or Kind.Number) || paragraph.Level == 0) continue;
+
+            ITextParagraphFormat format = document.GetRange(paragraph.Start, paragraph.Start + paragraph.Length).ParagraphFormat;
+            format.SetIndents(format.FirstLineIndent, format.LeftIndent + paragraph.Level * ListIndentStep, format.RightIndent);
         }
 
         foreach (Span span in builder.Spans)
@@ -147,26 +174,47 @@ public static partial class RichTextMarkdown
         var assets = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
         float baseSize = document.GetDefaultCharacterFormat().Size;
 
-        var markdown = new StringBuilder();
-        bool inCodeBlock = false;
-        int number = 0;
+        var lines = new List<LineInfo>();
         int offset = 0;
-
         foreach (string line in text.Split('\r'))
         {
-            int start = offset;
+            ITextParagraphFormat paragraphFormat = document.GetRange(offset, offset).ParagraphFormat;
+            List<string> tags = TagPattern().Matches(line).Select(m => m.Groups[1].Value).ToList();
+            lines.Add(new LineInfo(offset, line, StripTags(line), tags, paragraphFormat.ListType, paragraphFormat.LeftIndent, paragraphFormat.ListStart));
             offset += line.Length + 1;
+        }
+        int[] levels = ListLevels(lines);
 
-            ITextRange whole = document.GetRange(start, start + line.Length);
-            ITextParagraphFormat paragraphFormat = document.GetRange(start, start).ParagraphFormat;
-            MarkerType listType = paragraphFormat.ListType;
+        var markdown = new StringBuilder();
+        bool inCodeBlock = false;
+        int[] counters = new int[10];
+        int[] markerWidths = new int[10];
 
-            bool isCode = line.Length > 0 && whole.CharacterFormat.Name == CodeFont && !line.Contains(ObjectChar);
+        for (int index = 0; index < lines.Count; index++)
+        {
+            LineInfo info = lines[index];
+            int start = info.Start;
+            string visible = info.Visible;
+
+            if (info.Tags.Contains("raw"))
+            {
+                if (inCodeBlock) markdown.Append("```\n");
+                inCodeBlock = false;
+                Array.Clear(counters);
+                Array.Clear(markerWidths);
+                markdown.Append(visible).Append('\n');
+                continue;
+            }
+
+            ITextRange whole = document.GetRange(start, start + info.Line.Length);
+            string? language = info.Tags.FirstOrDefault(t => t.StartsWith("code:", StringComparison.Ordinal))?[5..];
+            bool isCode = visible.Length > 0 && whole.CharacterFormat.Name == CodeFont && !visible.Contains(ObjectChar);
             if (isCode)
             {
-                if (!inCodeBlock) markdown.Append("```\n");
+                if (inCodeBlock && language is not null) markdown.Append("```\n");
+                if (!inCodeBlock || language is not null) markdown.Append("```").Append(language).Append('\n');
                 inCodeBlock = true;
-                markdown.Append(line).Append('\n');
+                markdown.Append(visible).Append('\n');
                 continue;
             }
             if (inCodeBlock)
@@ -175,24 +223,57 @@ public static partial class RichTextMarkdown
                 inCodeBlock = false;
             }
 
-            number = listType == MarkerType.Arabic ? number + 1 : 0;
+            if (!info.IsList)
+            {
+                Array.Clear(counters);
+                Array.Clear(markerWidths);
+            }
 
-            if (line == RuleText && listType is MarkerType.None or MarkerType.Undefined)
+            if (visible == RuleText && !info.IsList)
             {
                 markdown.Append("***\n");
                 continue;
             }
 
-            int headingLevel = line.Length > 0 ? HeadingLevel(whole.CharacterFormat.Size, baseSize) : 0;
-            string prefix = headingLevel > 0 ? new string('#', headingLevel) + " "
-                : listType == MarkerType.Bullet ? "- "
-                : listType == MarkerType.Arabic ? $"{number}. "
-                : paragraphFormat.LeftIndent > 1 && line.Length > 0 ? "> "
-                : string.Empty;
+            string? headingTag = info.Tags.FirstOrDefault(t => t.Length == 2 && t[0] == 'h' && t[1] is >= '1' and <= '6');
+            int headingLevel = headingTag is not null ? headingTag[1] - '0'
+                : visible.Length > 0 ? HeadingLevel(whole.CharacterFormat.Size, baseSize)
+                : 0;
+
+            string prefix;
+            if (headingLevel > 0)
+            {
+                prefix = new string('#', headingLevel) + " ";
+            }
+            else if (info.IsList)
+            {
+                int level = levels[index];
+                Array.Clear(counters, level + 1, counters.Length - level - 1);
+                Array.Clear(markerWidths, level + 1, markerWidths.Length - level - 1);
+
+                string marker;
+                if (info.ListType == MarkerType.Arabic)
+                {
+                    counters[level] = counters[level] == 0 ? Math.Max(1, info.ListStart) : counters[level] + 1;
+                    marker = $"{counters[level]}. ";
+                }
+                else
+                {
+                    counters[level] = 0;
+                    marker = "- ";
+                }
+
+                prefix = new string(' ', markerWidths.Take(level).Sum()) + marker;
+                markerWidths[level] = marker.Length;
+            }
+            else
+            {
+                prefix = info.LeftIndent > 1 && visible.Length > 0 ? "> " : string.Empty;
+            }
 
             markdown.Append(prefix);
             var writer = new InlineWriter(markdown, escapeLineStart: prefix.Length == 0, ignoreBold: headingLevel > 0);
-            WriteRuns(document, text, start, line.Length, writer, pictures, assets, knownAssets, originalAssets);
+            WriteRuns(document, text, start, info.Line.Length, writer, pictures, assets, knownAssets, originalAssets);
             writer.Finish();
             markdown.Append('\n');
         }
@@ -269,6 +350,24 @@ public static partial class RichTextMarkdown
 
             position = runEnd;
         }
+    }
+
+    private static int[] ListLevels(List<LineInfo> lines)
+    {
+        int[] levels = new int[lines.Count];
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (!lines[i].IsList) continue;
+
+            int first = i;
+            while (i + 1 < lines.Count && lines[i + 1].IsList) i++;
+            float minIndent = lines.Skip(first).Take(i - first + 1).Min(l => l.LeftIndent);
+            for (int j = first; j <= i; j++)
+            {
+                levels[j] = Math.Clamp((int)Math.Round((lines[j].LeftIndent - minIndent) / ListIndentStep), 0, 9);
+            }
+        }
+        return levels;
     }
 
     private static int HeadingLevel(float size, float baseSize)
@@ -388,12 +487,15 @@ public static partial class RichTextMarkdown
         private int _paragraphStart;
         private Kind _kind;
         private int _level;
+        private int _number;
+        private int _listDepth;
         private int _lastLine = -1;
 
         public StringBuilder Text { get; } = new();
         public List<Paragraph> Paragraphs { get; } = new();
         public List<Span> Spans { get; } = new();
         public List<Picture> Pictures { get; } = new();
+        public List<(int Start, int Length)> HiddenRanges { get; } = new();
 
         public Builder(string markdown, IReadOnlyDictionary<string, byte[]> assets)
         {
@@ -427,13 +529,13 @@ public static partial class RichTextMarkdown
 
         private void MarkEnd(Block block) => _lastLine = LineOf(Math.Max(block.Span.Start, block.Span.End));
 
-        private void WalkBlock(Block block, Kind container)
+        private void WalkBlock(Block block, Kind container, int level = 0, int number = 0)
         {
             switch (block)
             {
                 case HeadingBlock heading:
                     AddBlankLinesBefore(heading);
-                    Begin(Kind.Heading, heading.Level);
+                    Begin(Kind.Heading, heading.Level, tag: "h" + heading.Level);
                     WalkInlines(heading.Inline);
                     End();
                     MarkEnd(heading);
@@ -441,23 +543,28 @@ public static partial class RichTextMarkdown
 
                 case ParagraphBlock paragraph:
                     AddBlankLinesBefore(paragraph);
-                    Begin(container, 0);
+                    Begin(container, level, number);
                     WalkInlines(paragraph.Inline);
                     End();
                     MarkEnd(paragraph);
                     break;
 
                 case ListBlock list:
+                    int listLevel = _listDepth++;
+                    int itemNumber = list.IsOrdered && int.TryParse(list.OrderedStart, out int orderedStart) ? orderedStart : 1;
                     foreach (Block item in list)
                     {
                         if (item is not ListItemBlock listItem) continue;
                         bool first = true;
                         foreach (Block child in listItem)
                         {
-                            WalkBlock(child, first ? (list.IsOrdered ? Kind.Number : Kind.Bullet) : Kind.Normal);
+                            if (child is ListBlock) WalkBlock(child, Kind.Normal);
+                            else WalkBlock(child, first ? (list.IsOrdered ? Kind.Number : Kind.Bullet) : Kind.Normal, first ? listLevel : 0, itemNumber);
                             first = false;
                         }
+                        itemNumber++;
                     }
+                    _listDepth--;
                     break;
 
                 case QuoteBlock quote:
@@ -466,9 +573,10 @@ public static partial class RichTextMarkdown
 
                 case CodeBlock code:
                     AddBlankLinesBefore(code);
+                    string? info = code is FencedCodeBlock { Info.Length: > 0 } fenced ? "code:" + fenced.Info : null;
                     for (int i = 0; i < code.Lines.Count; i++)
                     {
-                        Begin(Kind.Code, 0);
+                        Begin(Kind.Code, 0, tag: i == 0 ? info : null);
                         AddText(code.Lines.Lines[i].Slice.ToString());
                         End();
                     }
@@ -483,22 +591,31 @@ public static partial class RichTextMarkdown
                     MarkEnd(rule);
                     break;
 
+                case Markdig.Extensions.Tables.Table:
+                    AddRaw(block);
+                    break;
+
                 case ContainerBlock containerBlock:
-                    foreach (Block child in containerBlock) WalkBlock(child, container);
+                    foreach (Block child in containerBlock) WalkBlock(child, container, level, number);
                     break;
 
                 default:
-                    AddBlankLinesBefore(block);
-                    string raw = _markdown.Substring(block.Span.Start, Math.Max(0, block.Span.Length)).TrimEnd('\n');
-                    foreach (string line in raw.Split('\n'))
-                    {
-                        Begin(Kind.Normal, 0);
-                        AddText(line);
-                        End();
-                    }
-                    MarkEnd(block);
+                    AddRaw(block);
                     break;
             }
+        }
+
+        private void AddRaw(Block block)
+        {
+            AddBlankLinesBefore(block);
+            string raw = _markdown.Substring(block.Span.Start, Math.Max(0, block.Span.Length)).TrimEnd('\n');
+            foreach (string line in raw.Split('\n'))
+            {
+                Begin(Kind.Raw, 0, tag: "raw");
+                AddText(line);
+                End();
+            }
+            MarkEnd(block);
         }
 
         private void WalkInlines(ContainerInline? container)
@@ -550,8 +667,9 @@ public static partial class RichTextMarkdown
                         _link = before;
                         break;
                     case LineBreakInline:
-                        Kind kind = _kind is Kind.Bullet or Kind.Number ? Kind.Normal : _kind;
-                        int level = _level;
+                        bool inList = _kind is Kind.Bullet or Kind.Number;
+                        Kind kind = inList ? Kind.Normal : _kind;
+                        int level = inList || _kind == Kind.Heading ? 0 : _level;
                         End();
                         Begin(kind, level);
                         break;
@@ -580,16 +698,21 @@ public static partial class RichTextMarkdown
 
         private Style CurrentStyle => _styleDepth.Where(p => p.Value > 0).Aggregate(Style.None, (all, p) => all | p.Key);
 
-        private void Begin(Kind kind, int level)
+        private void Begin(Kind kind, int level, int number = 0, string? tag = null)
         {
             _paragraphStart = Text.Length;
             _kind = kind;
             _level = level;
+            _number = number;
+            if (tag is null) return;
+
+            HiddenRanges.Add((Text.Length, tag.Length + 2));
+            Text.Append(TagOpen).Append(tag).Append(TagClose);
         }
 
         private void End()
         {
-            Paragraphs.Add(new Paragraph(_paragraphStart, Text.Length - _paragraphStart, _kind, _level));
+            Paragraphs.Add(new Paragraph(_paragraphStart, Text.Length - _paragraphStart, _kind, _level, _number));
             Text.Append('\r');
         }
 
