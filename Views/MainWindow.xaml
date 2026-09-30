@@ -328,37 +328,99 @@
                            Foreground="{StaticResource NoteTextBrush}" VerticalAlignment="Center" />
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Padding="24,8,24,24" Spacing="8" MaxWidth="640">
-                    <TextBlock Text="Editor" Style="{StaticResource SettingsSectionStyle}" />
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Autosave" Foreground="{StaticResource NoteTextBrush}" />
-                                <TextBlock Text="Save the note a moment after you stop typing"
-                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                                           Foreground="{StaticResource NoteTextBrush}" />
-                            </StackPanel>
-                            <ToggleSwitch Grid.Column="1" MinWidth="0" OnContent="{x:Null}" OffContent="{x:Null}"
-                                          IsOn="{x:Bind ViewModel.Settings.Editor.AutoSave, Mode=TwoWay}" />
-                        </Grid>
-                    </Border>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="Appearance" Style="{StaticResource SettingsSectionStyle}" />
-                    <Border Style="{StaticResource SettingsCardStyle}">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Theme" Foreground="{StaticResource NoteTextBrush}" />
-                            <RadioButtons x:Name="ThemeRadioButtons"
-                                          Foreground="{StaticResource NoteTextBrush}"
-                                          SelectionChanged="ThemeRadioButtons_SelectionChanged" />
+                <ListView x:Name="SettingsNav" Grid.Column="0" Padding="4,8,0,8"
+                          SelectionMode="Single" Foreground="{StaticResource NoteTextBrush}"
+                          SelectionChanged="SettingsNav_SelectionChanged">
+                    <ListViewItem Tag="Files">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE8B7;" FontSize="15" />
+                            <TextBlock Text="Files" />
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                    </ListViewItem>
+                    <ListViewItem Tag="Theme">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE790;" FontSize="15" />
+                            <TextBlock Text="Theme" />
+                        </StackPanel>
+                    </ListViewItem>
+                    <ListViewItem Tag="Ai">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE8BD;" FontSize="15" />
+                            <TextBlock Text="AI" />
+                        </StackPanel>
+                    </ListViewItem>
+                </ListView>
+
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                    <Grid Padding="16,8,24,24">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MaxWidth="640" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel x:Name="FilesPage" Spacing="8">
+                            <TextBlock Text="Files" Style="{StaticResource SettingsSectionStyle}" />
+                            <Border Style="{StaticResource SettingsCardStyle}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Autosave" Foreground="{StaticResource NoteTextBrush}" />
+                                        <TextBlock Text="Save the note a moment after you stop typing"
+                                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                                   Foreground="{StaticResource NoteTextBrush}" />
+                                    </StackPanel>
+                                    <ToggleSwitch Grid.Column="1" MinWidth="0" OnContent="{x:Null}" OffContent="{x:Null}"
+                                                  IsOn="{x:Bind ViewModel.Settings.Editor.AutoSave, Mode=TwoWay}" />
+                                </Grid>
+                            </Border>
+                            <Border Style="{StaticResource SettingsCardStyle}">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Default save location" Foreground="{StaticResource NoteTextBrush}" />
+                                        <TextBlock x:Name="SaveFolderText" FontSize="12" Opacity="0.7"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{StaticResource NoteTextBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Change..." VerticalAlignment="Center"
+                                            Click="ChangeSaveFolder_Click" />
+                                    <Button x:Name="ResetSaveFolderButton" Grid.Column="2" Content="Reset"
+                                            VerticalAlignment="Center" Click="ResetSaveFolder_Click" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel x:Name="ThemePage" Spacing="8" Visibility="Collapsed">
+                            <TextBlock Text="Theme" Style="{StaticResource SettingsSectionStyle}" />
+                            <Border Style="{StaticResource SettingsCardStyle}">
+                                <RadioButtons x:Name="ThemeRadioButtons"
+                                              Foreground="{StaticResource NoteTextBrush}"
+                                              SelectionChanged="ThemeRadioButtons_SelectionChanged" />
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel x:Name="AiPage" Spacing="8" Visibility="Collapsed">
+                            <TextBlock Text="AI providers" Style="{StaticResource SettingsSectionStyle}" />
+                            <Border Style="{StaticResource SettingsCardStyle}">
+                                <StackPanel x:Name="AiProvidersPanel" Spacing="12" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

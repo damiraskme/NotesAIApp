@@ -97,6 +97,9 @@ public sealed partial class MainWindow : Window
         }
 
         BuildThemeSettings();
+        BuildAiProviderSettings();
+        UpdateSaveFolderText();
+        SettingsNav.SelectedIndex = 0;
         BuildRecentMenu();
         BuildNewMenus();
 
@@ -355,6 +358,113 @@ public sealed partial class MainWindow : Window
         ThemeRadioButtons.SelectedIndex = ThemeService.Themes
             .Select((t, i) => (t, i))
             .FirstOrDefault(x => x.t.Name == ThemeService.CurrentTheme).i;
+    }
+
+    private void BuildAiProviderSettings()
+    {
+        AiProvidersPanel.Children.Clear();
+        var textBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["NoteTextBrush"];
+
+        foreach (IAiProvider provider in AiProviders.All)
+        {
+            var row = new Grid { ColumnSpacing = 8 };
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            info.Children.Add(new TextBlock { Text = provider.DisplayName, Foreground = textBrush });
+            info.Children.Add(new TextBlock
+            {
+                Text = provider.RequiresApiKey ? "No API key" : "No key needed",
+                FontSize = 12,
+                Opacity = 0.7,
+                Foreground = textBrush,
+            });
+            row.Children.Add(info);
+
+            if (provider.RequiresApiKey)
+            {
+                var add = new Button { Content = "Add key", VerticalAlignment = VerticalAlignment.Center };
+                add.Click += async (s, e) => await PromptForApiKeyAsync(provider);
+                Grid.SetColumn(add, 1);
+                row.Children.Add(add);
+            }
+
+            AiProvidersPanel.Children.Add(row);
+        }
+    }
+
+    private async Task PromptForApiKeyAsync(IAiProvider provider)
+    {
+        var keyBox = new PasswordBox
+        {
+            PlaceholderText = "Paste your API key",
+            PasswordRevealMode = PasswordRevealMode.Peek,
+        };
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(new TextBlock
+        {
+            Text = "Keys are not stored yet. Saving will be connected in a later version.",
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.8,
+        });
+        content.Children.Add(keyBox);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = RootGrid.XamlRoot,
+            Title = $"{provider.DisplayName} API key",
+            Content = content,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            IsPrimaryButtonEnabled = false,
+            RequestedTheme = RootGrid.ActualTheme,
+        };
+        keyBox.PasswordChanged += (s, e) => dialog.IsPrimaryButtonEnabled = keyBox.Password.Trim().Length > 0;
+        dialog.Opened += (s, e) => keyBox.Focus(FocusState.Programmatic);
+
+        await dialog.ShowAsync();
+    }
+
+    private void SettingsNav_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        string page = (SettingsNav.SelectedItem as ListViewItem)?.Tag as string ?? "Files";
+        FilesPage.Visibility = page == "Files" ? Visibility.Visible : Visibility.Collapsed;
+        ThemePage.Visibility = page == "Theme" ? Visibility.Visible : Visibility.Collapsed;
+        AiPage.Visibility = page == "Ai" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateSaveFolderText()
+    {
+        string? folder = ViewModel.Settings.Editor.DefaultSaveFolder;
+        bool custom = !string.IsNullOrEmpty(folder);
+        SaveFolderText.Text = custom ? folder : "Documents";
+        ToolTipService.SetToolTip(SaveFolderText, SaveFolderText.Text);
+        ResetSaveFolderButton.IsEnabled = custom;
+    }
+
+    private async void ChangeSaveFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Microsoft.Windows.Storage.Pickers.FolderPicker(AppWindow.Id)
+        {
+            SuggestedStartLocation = Microsoft.Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary,
+        };
+        string? current = ViewModel.Settings.Editor.DefaultSaveFolder;
+        if (!string.IsNullOrEmpty(current) && Directory.Exists(current)) picker.SuggestedFolder = current;
+
+        var result = await picker.PickSingleFolderAsync();
+        if (result is null) return;
+
+        ViewModel.Settings.Editor.DefaultSaveFolder = result.Path;
+        UpdateSaveFolderText();
+    }
+
+    private void ResetSaveFolder_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Settings.Editor.DefaultSaveFolder = null;
+        UpdateSaveFolderText();
     }
 
     private void ThemeRadioButtons_SelectionChanged(object sender, SelectionChangedEventArgs e)

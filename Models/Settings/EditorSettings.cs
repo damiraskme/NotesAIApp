@@ -9,5 +9,8 @@ namespace MyApp.Models.Settings
 
         [ObservableProperty]
         public partial double AutoSaveDelaySeconds { get; set; } = 2;
+
+        [ObservableProperty]
+        public partial string? DefaultSaveFolder { get; set; }
     }
 }

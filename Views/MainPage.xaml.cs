@@ -521,6 +521,9 @@ public sealed partial class MainPage : Page
         return WriteActiveTab();
     }
 
+    private string? DefaultSaveFolder =>
+        Editor.DefaultSaveFolder is { Length: > 0 } folder && Directory.Exists(folder) ? folder : null;
+
     public async Task<bool> SaveAsAsync()
     {
         if (ActiveTab is not NoteTab tab) return false;
@@ -531,6 +534,7 @@ public sealed partial class MainPage : Page
             SuggestedFileName = tab.FilePath is null ? "Note" : Path.GetFileNameWithoutExtension(tab.FilePath),
             DefaultFileExtension = tab.Extension,
         };
+        if (DefaultSaveFolder is string saveFolder) picker.SuggestedFolder = saveFolder;
         foreach (var (name, extension) in SaveFileTypes.OrderBy(t => t.Extension == tab.Extension ? 0 : 1))
         {
             picker.FileTypeChoices.Add(name, new List<string> { extension });
@@ -560,6 +564,7 @@ public sealed partial class MainPage : Page
         {
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
         };
+        if (DefaultSaveFolder is string openFolder) picker.SuggestedStartFolder = openFolder;
         picker.FileTypeFilter.Add(TextPackService.Extension);
         picker.FileTypeFilter.Add(".rtf");
         picker.FileTypeFilter.Add(".txt");
